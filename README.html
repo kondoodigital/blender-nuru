@@ -1,0 +1,199 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Kondoo Digital GmbH -->
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuru - Eevee Raytrace for Blender</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050505;
+      --panel: #0c1017;
+      --panel-2: #111722;
+      --text: #f6f8fb;
+      --muted: #b9c1d4;
+      --link: #50d5ff;
+      --gold: #ffd36a;
+      --green: #7dff9a;
+      --red: #ff927d;
+      --border: #293242;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+    }
+    main {
+      width: min(1060px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }
+    .hero {
+      text-align: center;
+      padding: 36px 22px;
+      background: radial-gradient(circle at 50% 0%, #24272f 0%, #08090c 58%, #000 100%);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      margin-bottom: 30px;
+    }
+    .hero img { width: min(512px, 100%); height: auto; }
+    h1 { font-size: 46px; letter-spacing: 0.04em; margin: 18px 0 8px; }
+    h2 { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-top: 34px; }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code {
+      background: #151922;
+      color: var(--gold);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+    pre {
+      background: #080b10;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      overflow: auto;
+    }
+    pre code { background: transparent; color: var(--text); padding: 0; }
+    table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+    th, td { border: 1px solid var(--border); padding: 12px; text-align: left; }
+    th { background: #151b26; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card { border: 1px solid var(--border); border-radius: 14px; padding: 16px; background: var(--panel); }
+    .implemented { border-color: #244b2e; background: #0f1711; }
+    .not-shipped { border-color: #5d2d23; background: #17100f; }
+    .note { color: #f3c969; background: #1c1608; border: 1px solid #5e4511; border-radius: 12px; padding: 14px 16px; }
+    .muted { color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <img src="images/nuru_logo_512.png" alt="Nuru - Eevee Raytrace for Blender, powered by Kondoo Digital">
+    <p><strong>Metal Hardware Ray Tracing for Blender Eevee.</strong></p>
+    <p class="muted">A Blender branch by Kondoo Digital GmbH for per-feature Hardware RT in Eevee.</p>
+    <p>
+      <a href="#what-nuru-is">What Nuru Is</a> |
+      <a href="#what-nuru-does">What It Does</a> |
+      <a href="#how-to-use-nuru-in-blender">How To Use</a> |
+      <a href="#current-diamond-1-scope">Diamond 1 Scope</a> |
+      <a href="#developer-quick-start">Developer Quick Start</a>
+    </p>
+  </section>
+
+  <h2 id="what-nuru-is">What Nuru Is</h2>
+  <p>Nuru is an experimental Blender/Eevee Hardware RT branch. It adds a user-facing <code>Nuru Raytracing</code> method to Eevee and lets artists decide which parts of a scene are owned by hardware ray tracing and which parts remain on classic Eevee.</p>
+  <p>The current <strong>DIAMOND 1</strong> implementation is Metal-first. It targets Apple GPUs with hardware ray tracing support and keeps Blender's normal multi-platform source tree intact. OptiX and CUDA Nuru backend support are Work in Progress.</p>
+
+  <table>
+    <tr><th>Area</th><th>Diamond 1 Status</th></tr>
+    <tr><td>Viewport backend</td><td>Metal only</td></tr>
+    <tr><td>Practical device target</td><td>Apple M3+ on macOS 14+</td></tr>
+    <tr><td>Backend roadmap</td><td>Metal is active; OptiX and CUDA Nuru support are Work in Progress</td></tr>
+    <tr><td>Fallback behavior</td><td>Classic Eevee remains responsible when Nuru or an individual HWRT feature is off</td></tr>
+  </table>
+
+  <h2 id="what-nuru-does">What Nuru Does</h2>
+  <ul>
+    <li><strong>Global Illumination</strong> uses regular Hardware RT diffuse transport.</li>
+    <li><strong>Raytrace Shadows</strong> uses explicit Hardware RT shadow visibility passes.</li>
+    <li><strong>Raytrace Environment</strong> handles environment visibility and world-shadow transport.</li>
+    <li><strong>Raytrace Reflections</strong> can move reflections from classic Eevee to Full RT.</li>
+    <li><strong>Raytrace Refractions</strong> can be Off or Full RT.</li>
+    <li><strong>Indirect GI</strong> enables Primary and Secondary GI.</li>
+    <li>Scene-final reflection/refraction passes can use sparse material replay, with proxy fallback when replay is unavailable.</li>
+    <li>Rough GGX reflection/refraction material evaluation can request roughness-aware texture filtering for supported texture inputs.</li>
+  </ul>
+  <p>Nuru is not a path tracer and does not claim Cycles parity. It is an Eevee renderer path with hardware ray tracing where the current implementation has explicit ownership.</p>
+  <p>That hybrid renderer design has practical advantages:</p>
+  <ul>
+    <li><strong>Interactive feedback stays central.</strong> Nuru keeps Eevee's real-time renderer model and adds Hardware RT where it is useful instead of replacing the whole frame with path tracing.</li>
+    <li><strong>Feature ownership is predictable.</strong> GI, shadows, environment, reflections, and refractions can be enabled independently, so classic Eevee remains available where it is still the better or safer path.</li>
+    <li><strong>Artists can trade quality and cost per feature.</strong> A scene can use Hardware RT reflections without forcing every lighting effect into the same expensive sampling model.</li>
+    <li><strong>Eevee compatibility remains valuable.</strong> Existing Eevee materials, probes, viewport workflows, and production expectations continue to matter in the hybrid renderer.</li>
+    <li><strong>Hardware RT is focused on visible wins.</strong> Nuru uses ray tracing for scene intersections, visibility, scene-final specular paths, material replay, and Primary and Secondary GI while keeping the renderer responsive.</li>
+  </ul>
+
+  <h2 id="how-to-use-nuru-in-blender">How To Use Nuru In Blender</h2>
+  <ol>
+    <li>Open <strong>Render Properties</strong>.</li>
+    <li>Set <strong>Render Engine</strong> to <strong>Eevee</strong>.</li>
+    <li>Open the <strong>Raytracing</strong> panel and enable ray tracing.</li>
+    <li>Set <strong>Method</strong> to <strong>Nuru Raytracing</strong>.</li>
+    <li>If the hardware gate is supported, the Nuru status panel shows the logo and enables <strong>Quick Settings</strong>.</li>
+    <li>Enable only the features you want Hardware RT to own.</li>
+    <li>Tune <strong>GI Resolution</strong>, <strong>Indirect GI</strong>, <strong>Indirect GI Resolution</strong>, reflection <strong>Bounces</strong>, refraction <strong>Bounces</strong>, and <strong>Indirect Clamp</strong>.</li>
+  </ol>
+  <p class="note">When <strong>Nuru Raytracing</strong> is selected, Blender's classic <strong>Fast GI Approximation</strong> panel is intentionally inactive for the hardware method. Nuru uses its own Hardware RT GI controls instead.</p>
+  <p>Material Preview does not partially activate Nuru. Use <strong>Rendered</strong> viewport or final render paths when validating Nuru behavior.</p>
+
+  <h2 id="macos-release-download-note">macOS Release Download Note</h2>
+  <p>The current v0.9 macOS release build is for now unsigned and not notarized with Apple Developer ID. After downloading the ZIP from GitHub, macOS Gatekeeper may show a message that <code>Blender.app</code> is "damaged" and cannot be opened.</p>
+  <p>To use the downloaded release, remove the quarantine attribute before opening it:</p>
+  <pre><code>xattr -dr com.apple.quarantine /path/to/Blender.app</code></pre>
+
+  <h2 id="current-diamond-1-scope">Current Diamond 1 Scope</h2>
+  <div class="grid">
+    <section class="card implemented">
+      <h3 style="color:var(--green)">Implemented</h3>
+      <ul>
+        <li>Metal Hardware RT scene tracing and acceleration structure support.</li>
+        <li>High performance Apple M3+ GI / RT optimisation and Metal offload.</li>
+        <li>Hardware RT diffuse GI as the active Nuru GI path.</li>
+        <li>Hardware RT shadow and environment visibility.</li>
+        <li>Full RT reflection and refraction ownership.</li>
+        <li>Scene-final specular resolve, sparse material replay, and proxy fallback.</li>
+        <li>Primary and Secondary GI.</li>
+        <li>Rough material texture filtering for implemented rough reflection/refraction material evaluation.</li>
+      </ul>
+    </section>
+    <section class="card not-shipped">
+      <h3 style="color:var(--red)">Work In Progress / Current Limits</h3>
+      <ul>
+        <li>OptiX and CUDA Nuru backend support are Work in Progress.</li>
+        <li>Extended Shading and EEVEE/Cycles shader parity are Work in Progress.</li>
+        <li>EEVEE shaders are usually working; however, as Nuru is raytracing, some shaders and textures may need adjustments.</li>
+        <li>Apple M1/M2 and non-RTX-class cards cannot be supported due to lack of RT cores.</li>
+        <li>Pathtracer-equivalent sharp mirror correctness for Primary and Secondary GI.</li>
+      </ul>
+    </section>
+  </div>
+
+  <h2 id="developer-quick-start">Developer Quick Start</h2>
+  <p>This repository follows Blender's normal build flow, with repo-local build roots under <code>builds/</code>.</p>
+  <pre><code>make update
+cmake --build builds/macos-dev --target blender -j 12
+cmake --install builds/macos-dev</code></pre>
+  <p>For focused Nuru/Eevee or Metal HWRT changes:</p>
+  <pre><code>cmake --build builds/macos-dev --target bf_gpu bf_draw blender -j 12</code></pre>
+  <p>If RNA, DNA, or blend-file versioning changed:</p>
+  <pre><code>cmake --build builds/macos-dev --target makesdna makesrna bf_dna bf_rna bf_blenloader bf_gpu bf_draw blender -j 12</code></pre>
+  <p class="muted">Render and viewport evidence is user-owned in this repository. Do not run local render or viewport validation unless explicitly requested.</p>
+
+  <h2>Documentation</h2>
+  <ul>
+    <li><a href="docs/eevee_hwrt_first_release.md">docs/eevee_hwrt_first_release.md</a> - first-release runtime contract.</li>
+    <li><a href="docs/eevee_hwrt_ship_criteria.md">docs/eevee_hwrt_ship_criteria.md</a> - validation and release criteria.</li>
+    <li><a href="docs/eevee_hwrt_system_interactions.md">docs/eevee_hwrt_system_interactions.md</a> - ownership rules between Nuru and classic Eevee.</li>
+    <li><a href="docs/eevee_hwrt_artifact_triage.md">docs/eevee_hwrt_artifact_triage.md</a> - evidence-first debugging guide.</li>
+  </ul>
+
+  <h2>Upstream Blender Links</h2>
+  <ul>
+    <li><a href="https://www.blender.org">Blender Website</a></li>
+    <li><a href="https://docs.blender.org/manual/en/latest/index.html">Blender Reference Manual</a></li>
+    <li><a href="https://developer.blender.org/docs/">Blender Developer Documentation</a></li>
+    <li><a href="https://projects.blender.org">Blender Code Review &amp; Bug Tracker</a></li>
+  </ul>
+
+  <h2>License</h2>
+  <p>Nuru documentation and Kondoo Digital additions are attributed to Kondoo Digital GmbH under the Blender GPL license.</p>
+  <p class="muted">Blender as a whole is licensed under the GNU General Public License. See <a href="https://www.blender.org/about/license">blender.org/about/license</a> for details.</p>
+</main>
+</body>
+</html>

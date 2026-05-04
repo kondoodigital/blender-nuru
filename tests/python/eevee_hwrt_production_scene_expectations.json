@@ -1,0 +1,24 @@
+{
+  "defaults": {
+    "require_exit_code_zero": true,
+    "require_metrics": true,
+    "require_stats": true,
+    "fail_if_effectively_black": true,
+    "require_memory_limited_zero": true
+  },
+  "scenes": {
+    "BARBERSHOP_INTERIOR": {
+      "min_global_luma": 0.15,
+      "min_center_luma": 0.15,
+      "expected_fast_gi_scene": "mixed",
+      "expected_fast_gi_budget": "balanced",
+      "max_fast_gi_traced_ms": 250.0
+    },
+    "POOL": {
+      "fail_if_effectively_black": false,
+      "expected_fast_gi_scene": "interior",
+      "expected_fast_gi_budget": "indirect",
+      "max_fast_gi_traced_ms": 120.0
+    }
+  }
+}
