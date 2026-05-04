@@ -17,6 +17,7 @@
 *.png filter=lfs diff=lfs merge=lfs -text
 images/Nuru[[:space:]]Logo-4x-upscale-4x.png -filter -diff -merge -text
 images/Nuru[[:space:]]Logo.png -filter -diff -merge -text
+images/Nuru[[:space:]]Logo[[:space:]]Wide.png -filter -diff -merge -text
 images/nuru_logo_256.png -filter -diff -merge -text
 images/nuru_logo_512.png -filter -diff -merge -text
 *.exr filter=lfs diff=lfs merge=lfs -text
