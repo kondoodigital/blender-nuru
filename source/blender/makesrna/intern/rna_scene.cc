@@ -720,10 +720,9 @@ static const EnumPropertyItem eevee_resolution_scale_items[] = {
 };
 
 static const EnumPropertyItem eevee_indirect_gi_resolution_items[] = {
-    {8, "8", 0, "1:8", "Render the off-camera reflected GI cache at 12.5% render resolution"},
-    {16, "16", 0, "1:16", "Render the off-camera reflected GI cache at 6.25% render resolution"},
-    {32, "32", 0, "1:32", "Render the off-camera reflected GI cache at 3.125% render resolution"},
-    {64, "64", 0, "1:64", "Render the off-camera reflected GI cache at 1.5625% render resolution"},
+    {1, "1", 0, "1:1", "Trace secondary reflected GI at full render resolution"},
+    {2, "2", 0, "1:2", "Trace secondary reflected GI at 50% render resolution"},
+    {4, "4", 0, "1:4", "Trace secondary reflected GI at 25% render resolution"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
@@ -2204,13 +2203,12 @@ static int rna_SceneEEVEE_gi_mode_sanitize(const int value)
 static int rna_SceneEEVEE_indirect_gi_resolution_sanitize(const int value)
 {
   switch (value) {
-    case 8:
-    case 16:
-    case 32:
-    case 64:
+    case 1:
+    case 2:
+    case 4:
       return value;
     default:
-      return 16;
+      return 4;
   }
 }
 
@@ -8668,9 +8666,8 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   prop = RNA_def_property(srna, "use_hardware_raytracing_indirect_gi_cache", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "use_hardware_raytracing_indirect_gi_cache", 1);
   RNA_def_property_ui_text(prop,
-                           "Indirect GI",
-                           "Enable the low-resolution off-camera radiance cache used by Hardware "
-                           "RT reflected diffuse receivers");
+                           "Secondary GI",
+                           "Enable secondary reflected diffuse GI for Hardware RT mirrors");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   prop = RNA_def_property(srna, "hardware_raytracing_indirect_gi_resolution", PROP_ENUM, PROP_NONE);
@@ -8680,9 +8677,8 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
                               "rna_SceneEEVEE_indirect_gi_resolution_set",
                               nullptr);
   RNA_def_property_ui_text(prop,
-                           "Indirect GI Resolution",
-                           "Resolution of the low-resolution off-camera radiance cache used by "
-                           "Hardware RT reflected diffuse receivers");
+                           "Secondary GI Resolution",
+                           "Resolution of the secondary reflected GI receiver-photon pass");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   prop = RNA_def_property(srna, "use_hardware_raytracing_shadows", PROP_BOOLEAN, PROP_NONE);

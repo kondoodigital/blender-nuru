@@ -529,8 +529,8 @@ void blo_do_versions_520(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 502, 31)) {
     for (Scene &scene : bmain->scenes) {
-      if (!ELEM(scene.eevee.hardware_raytracing_indirect_gi_resolution, 8, 16, 32, 64)) {
-        scene.eevee.hardware_raytracing_indirect_gi_resolution = 16;
+      if (!ELEM(scene.eevee.hardware_raytracing_indirect_gi_resolution, 1, 2, 4)) {
+        scene.eevee.hardware_raytracing_indirect_gi_resolution = 4;
       }
     }
   }
@@ -538,8 +538,8 @@ void blo_do_versions_520(FileData * /*fd*/, Library * /*lib*/, Main *bmain)
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 502, 32)) {
     for (Scene &scene : bmain->scenes) {
       scene.eevee.use_hardware_raytracing_indirect_gi_cache = 1;
-      if (!ELEM(scene.eevee.hardware_raytracing_indirect_gi_resolution, 8, 16, 32, 64)) {
-        scene.eevee.hardware_raytracing_indirect_gi_resolution = 16;
+      if (!ELEM(scene.eevee.hardware_raytracing_indirect_gi_resolution, 1, 2, 4)) {
+        scene.eevee.hardware_raytracing_indirect_gi_resolution = 4;
       }
     }
   }

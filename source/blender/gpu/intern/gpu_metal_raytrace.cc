@@ -188,6 +188,20 @@ bool GPU_metal_raytrace_scene_trace_fast_gi(GPUMetalRaytraceScene *scene,
   return false;
 }
 
+bool GPU_metal_raytrace_scene_trace_reflected_receiver_gi(
+    GPUMetalRaytraceScene *scene, const GPUMetalRaytraceReflectedReceiverGIParams &params)
+{
+#ifdef WITH_METAL_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    return gpu::metal::raytrace_scene_trace_reflected_receiver_gi(scene, params);
+  }
+#else
+  (void)scene;
+  (void)params;
+#endif
+  return false;
+}
+
 void GPU_metal_raytrace_scene_free(GPUMetalRaytraceScene *scene)
 {
 #ifdef WITH_METAL_BACKEND

@@ -165,6 +165,7 @@ class RayTraceModule {
   draw::PassSimple trace_screen_ps_ = {"Trace.Screen"};
   draw::PassSimple trace_fallback_ps_ = {"Trace.Fallback"};
   draw::PassSimple trace_hardware_lighting_ps_ = {"Trace.HardwareLighting"};
+  draw::PassSimple hardware_reflected_receiver_gi_blur_ps_ = {"Trace.HardwareReflectedReceiverGIBlur"};
   draw::PassSimple scene_final_specular_resolve_ps_ = {"Trace.SceneFinalSpecularResolve"};
   draw::PassSimple hardware_indirect_gi_cache_store_ps_ = {"Trace.HardwareIndirectGICacheStore"};
   draw::PassSimple hardware_fast_gi_update_ps_[3] = {{"Trace.HardwareFastGIUpdate0"},
@@ -326,6 +327,8 @@ class RayTraceModule {
   Texture hardware_indirect_gi_radiance_cache_tx_ = {"hardware_indirect_gi_radiance_cache_tx_"};
   Texture hardware_indirect_gi_position_cache_tx_ = {"hardware_indirect_gi_position_cache_tx_"};
   Texture hardware_indirect_gi_normal_cache_tx_ = {"hardware_indirect_gi_normal_cache_tx_"};
+  Texture hardware_reflected_receiver_gi_tx_ = {"hardware_reflected_receiver_gi_tx_"};
+  Texture hardware_reflected_receiver_gi_blur_tx_ = {"hardware_reflected_receiver_gi_blur_tx_"};
   Texture hardware_fast_gi_tx_ = {"hardware_fast_gi_tx_"};
   Texture hardware_fast_gi_error_tx_ = {"hardware_fast_gi_error_tx_"};
   Texture hardware_fast_gi_visibility_tx_ = {"hardware_fast_gi_visibility_tx_"};
@@ -372,6 +375,7 @@ class RayTraceModule {
   int hardware_indirect_gi_cache_resolution_ = 1;
   int hardware_indirect_gi_cache_face_index_ = 0;
   int3 hardware_indirect_gi_cache_dispatch_size_ = int3(1);
+  int hardware_reflected_receiver_gi_resolution_divisor_ = 4;
   Framebuffer hardware_indirect_gi_prepass_fb_ = {"Trace.HardwareIndirectGICachePrepass"};
   Framebuffer hardware_indirect_gi_combined_fb_ = {"Trace.HardwareIndirectGICacheCombined"};
   Framebuffer hardware_indirect_gi_gbuffer_fb_ = {"Trace.HardwareIndirectGICacheGBuffer"};
@@ -498,6 +502,7 @@ class RayTraceModule {
   void render_secondary_environment_visibility(GPUMetalRaytraceScene *metal_scene,
                                                int2 tracing_extent);
   void render_secondary_shadow_visibility(GPUMetalRaytraceScene *metal_scene, int2 tracing_extent);
+  void render_reflected_receiver_gi(GPUMetalRaytraceScene *metal_scene, int2 tracing_extent);
   void render_hardware_indirect_gi_cache(View &main_view);
   void update_hardware_fast_gi_field(
       View &render_view, gpu::Texture *depth_tx, gpu::Texture *input_radiance_tx, int2 extent);

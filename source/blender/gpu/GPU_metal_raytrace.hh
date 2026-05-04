@@ -261,6 +261,27 @@ struct GPUMetalRaytraceFastGIParams {
   float4 cascade_config[3] = {float4(0.0f), float4(0.0f), float4(0.0f)};
 };
 
+struct GPUMetalRaytraceReflectedReceiverGIParams {
+  gpu::Texture *receiver_gi_tx = nullptr;
+  gpu::Texture *world_probe_tx = nullptr;
+  gpu::StorageBuf *light_buf = nullptr;
+  gpu::StorageBuf *dispatch_buf = nullptr;
+  gpu::StorageBuf *tiles_coord_buf = nullptr;
+  gpu::Texture *ray_time_tx = nullptr;
+  gpu::Texture *hit_albedo_tx = nullptr;
+  gpu::Texture *hit_normal_tx = nullptr;
+  gpu::Texture *hit_world_position_tx = nullptr;
+  int2 tracing_resolution = int2(1);
+  int resolution_divisor = 4;
+  int sample_count = 8;
+  int light_count = 0;
+  int light_sample_count = 2;
+  float normal_bias = 1.0e-3f;
+  bool use_environment = true;
+  float4 sampling_rand = float4(0.0f);
+  float4 world_probe_atlas_coord = float4(0.0f, 0.0f, 0.0f, -1.0f);
+};
+
 struct GPUMetalRaytraceSceneStats {
   int geometry_count = 0;
   int instance_count = 0;
@@ -303,6 +324,8 @@ bool GPU_metal_raytrace_scene_trace_hit_environment_visibility(
     GPUMetalRaytraceScene *scene, const GPUMetalRaytraceHitEnvironmentVisibilityParams &params);
 bool GPU_metal_raytrace_scene_trace_fast_gi(GPUMetalRaytraceScene *scene,
                                             const GPUMetalRaytraceFastGIParams &params);
+bool GPU_metal_raytrace_scene_trace_reflected_receiver_gi(
+    GPUMetalRaytraceScene *scene, const GPUMetalRaytraceReflectedReceiverGIParams &params);
 void GPU_metal_raytrace_scene_free(GPUMetalRaytraceScene *scene);
 
 }  // namespace blender

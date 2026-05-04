@@ -655,6 +655,13 @@ bool hardware_hit_indirect_gi_cache_radiance_load(float3 P_hit, float3 N_hit, fl
   return true;
 }
 
+bool hardware_reflected_receiver_gi_load(int2 texel, float3 &radiance)
+{
+  float4 gi = texelFetch(hardware_reflected_receiver_gi_tx, texel, 0);
+  radiance = max(gi.rgb, float3(0.0f));
+  return (gi.a > 0.5f) && (dot(radiance, radiance) > 1.0e-10f);
+}
+
 /* Indirect/base-family simplification:
  * - proxy payloads keep at most one base-family lobe,
  * - subsurface collapses to diffuse,
@@ -2236,31 +2243,49 @@ void main()
           texel, P_hit, N, true, hardware_hit_uses_caustics(), transmission_layer_radiance);
     }
 
+    const bool scene_final_diffuse_receiver =
+        scene_final_specular_phase &&
+        ((base_cl.type == CLOSURE_BSDF_DIFFUSE_ID) || (base_cl.type == CLOSURE_BSSRDF_BURLEY_ID));
     float3 visible_receiver_radiance = float3(0.0f);
     const bool scene_final_visible_diffuse_receiver =
-        scene_final_specular_phase &&
-        ((base_cl.type == CLOSURE_BSDF_DIFFUSE_ID) || (base_cl.type == CLOSURE_BSSRDF_BURLEY_ID)) &&
-        hardware_hit_raster_radiance_load(
-            texel, P_hit, N, hit_prefers_back_radiance, false, visible_receiver_radiance);
+        scene_final_diffuse_receiver && hardware_hit_raster_radiance_load(
+                                           texel,
+                                           P_hit,
+                                           N,
+                                           hit_prefers_back_radiance,
+                                           false,
+                                           visible_receiver_radiance);
+    float3 receiver_gi_radiance = float3(0.0f);
+    const bool scene_final_receiver_gi =
+        scene_final_diffuse_receiver && hardware_reflected_receiver_gi_load(texel, receiver_gi_radiance);
 
     if (!precombine_specular_caustics_phase) {
-      if (scene_final_visible_diffuse_receiver) {
+      const bool add_probe_terms = primary_is_diffuse_gi || scene_final_specular_phase;
+      if (scene_final_receiver_gi) {
+        /* Scene-final mirrors use GI traced from the actual reflected diffuse hit. */
+        radiance += base_direct;
+        radiance += (receiver_gi_radiance * max(base_cl.color, float3(0.0f))) /
+                    max(uniform_buf.clamp.indirect_scale, 1.0e-4f);
+      }
+      else if (scene_final_visible_diffuse_receiver) {
         /* Mirrors can reflect the resolved GI that is already visible for the receiver in the
          * main view. This is only used after the traced hit validates against the visible surface,
          * so off-camera receivers still stay owned by the traced/probe fallback paths. The
          * scene-final resolve applies the indirect scale later, while the visible combined buffer
-         * is already scaled. Undo that scale here to avoid brightening reflected screen GI twice. */
+         * is already scaled. Undo that scale here to avoid brightening reflected screen GI twice.
+         * This substitutes only the diffuse/base receiver term; glossy continuation still uses the
+         * traced closure below so secondary/probe GI remains visible in reflections. */
         radiance += visible_receiver_radiance / max(uniform_buf.clamp.indirect_scale, 1.0e-4f);
       }
       else {
         radiance += base_direct;
-        if (primary_is_diffuse_gi || scene_final_specular_phase) {
+        if (add_probe_terms) {
           radiance += base_probe;
         }
-        radiance += specular_direct * principled_reflection_layer_visibility;
-        if (primary_is_diffuse_gi || scene_final_specular_phase) {
-          radiance += specular_probe * principled_reflection_layer_visibility;
-        }
+      }
+      radiance += specular_direct * principled_reflection_layer_visibility;
+      if (add_probe_terms) {
+        radiance += specular_probe * principled_reflection_layer_visibility;
       }
       if (preserved_layered_scene_final &&
           dot(layered_receiver_radiance, layered_receiver_radiance) > 1.0e-10f)

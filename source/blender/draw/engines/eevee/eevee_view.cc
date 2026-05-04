@@ -85,8 +85,6 @@ void ShadingView::render()
 
   GPU_debug_group_begin(name_);
 
-  inst_.raytracing.render_hardware_indirect_gi_cache(main_view_);
-
   /* Needs to be before planar_probes because it needs correct crypto-matte & render-pass buffers
    * to reuse the same deferred shaders. */
   RenderBuffers &rbufs = inst_.render_buffers;

@@ -499,6 +499,7 @@ set(GLSL_SRC
   engines/eevee/shaders/eevee_ray_hardware_indirect_gi_cache_store_comp.glsl
   engines/eevee/shaders/eevee_ray_hardware_direct_light_tile_compact_comp.glsl
   engines/eevee/shaders/eevee_ray_hardware_direct_light_visibility_comp.glsl
+  engines/eevee/shaders/eevee_ray_hardware_reflected_receiver_gi_blur_comp.glsl
   engines/eevee/shaders/eevee_ray_hardware_trace_tile_compact_comp.glsl
   engines/eevee/shaders/eevee_ray_hit_eval_compact_comp.glsl
   engines/eevee/shaders/eevee_ray_hit_eval_count_comp.glsl

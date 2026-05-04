@@ -207,6 +207,7 @@ ShaderGroups ShaderModule::static_shaders_load(const ShaderGroups request_bits,
                                        RAY_HARDWARE_DIRECT_LIGHT_TILE_COMPACT,
                                        RAY_HARDWARE_DIRECT_LIGHT_VISIBILITY,
                                        RAY_HARDWARE_FAST_GI_UPDATE,
+                                       RAY_HARDWARE_REFLECTED_RECEIVER_GI_BLUR,
                                        RAY_HIT_EVAL_COMPACT,
                                        RAY_HIT_EVAL_COUNT,
                                        RAY_HIT_EVAL_PREFIX,
@@ -482,6 +483,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_ray_hardware_direct_light_visibility";
     case RAY_HARDWARE_FAST_GI_UPDATE:
       return "eevee_ray_hardware_fast_gi_update";
+    case RAY_HARDWARE_REFLECTED_RECEIVER_GI_BLUR:
+      return "eevee_ray_hardware_reflected_receiver_gi_blur";
     case RAY_HARDWARE_INDIRECT_GI_CACHE_STORE:
       return "eevee_ray_hardware_indirect_gi_cache_store";
     case RAY_HARDWARE_TRACE_TILE_COMPACT:

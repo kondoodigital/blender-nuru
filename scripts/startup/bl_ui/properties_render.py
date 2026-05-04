@@ -481,10 +481,10 @@ class RENDER_PT_eevee_raytracing(RenderButtonsPanel, Panel):
             sub.prop(options, "resolution_scale", text="GI Resolution")
             sub = section.row(align=True)
             sub.active = props.use_hardware_raytracing_gi
-            sub.prop(props, "use_hardware_raytracing_indirect_gi_cache", text="Indirect GI")
+            sub.prop(props, "use_hardware_raytracing_indirect_gi_cache", text="Secondary GI")
             sub = section.row(align=True)
             sub.active = props.use_hardware_raytracing_gi and props.use_hardware_raytracing_indirect_gi_cache
-            sub.prop(props, "hardware_raytracing_indirect_gi_resolution", text="Indirect GI Resolution")
+            sub.prop(props, "hardware_raytracing_indirect_gi_resolution", text="Secondary GI Resolution")
 
             section = quick_col.column(align=True)
             section.label(text="Indirect Light")

@@ -442,6 +442,15 @@ struct HardwareFastGIUniforms {
   int4 gi_environment_pad;
 };
 
+struct HardwareReflectedReceiverGIUniforms {
+  int4 resolution_samples;
+  float4 normal_bias_pad;
+  int4 environment_pad;
+  int4 light_count_pad;
+  float4 sampling_rand;
+  float4 world_probe_atlas_coord;
+};
+
 struct EmissiveLightRecord {
   float4 center_radius;
 };
@@ -1515,6 +1524,14 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "  float4 world_probe_atlas_coord;\n"
 "  int4 gi_environment_pad;\n"
 "};\n"
+"struct HardwareReflectedReceiverGIUniforms {\n"
+"  int4 resolution_samples;\n"
+"  float4 normal_bias_pad;\n"
+"  int4 environment_pad;\n"
+"  int4 light_count_pad;\n"
+"  float4 sampling_rand;\n"
+"  float4 world_probe_atlas_coord;\n"
+"};\n"
 "struct EmissiveLightRecord {\n"
 "  float4 center_radius;\n"
 "};\n"
@@ -2214,6 +2231,33 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "  const float r = sqrt(max(0.0f, 1.0f - z * z));\n"
 "  return float3(cos(phi) * r, sin(phi) * r, z);\n"
 "}\n"
+"inline float3 sample_reflected_receiver_gi_direction(uint2 tid,\n"
+"                                                    int sample_index,\n"
+"                                                    float3 N,\n"
+"                                                    constant HardwareReflectedReceiverGIUniforms &u)\n"
+"{\n"
+"  const float sample_count = float(max(u.resolution_samples.w, 1));\n"
+"  const float2 seed = float2(float(tid.x), float(tid.y * 17u)) +\n"
+"                      u.sampling_rand.xy * 37.0f + u.sampling_rand.zw * 11.0f;\n"
+"  const float phi_offset = hash12(seed + float2(0.37f, 0.61f));\n"
+"  const float sample_u = (float(sample_index) + 0.5f) / sample_count;\n"
+"  const float z = mix(sqrt(max(0.0f, 1.0f - sample_u)), 1.0f - sample_u, 0.45f);\n"
+"  const float phi = 2.39996322973f * (float(sample_index) + phi_offset * sample_count + 0.5f);\n"
+"  const float r = sqrt(max(0.0f, 1.0f - z * z));\n"
+"  float3 right, up;\n"
+"  make_orthonormal_basis(N, right, up);\n"
+"  return normalize(right * (cos(phi) * r) + up * (sin(phi) * r) + N * z);\n"
+"}\n"
+"inline float reflected_receiver_gi_hash(uint2 tid,\n"
+"                                        int sample_index,\n"
+"                                        float2 offset,\n"
+"                                        constant HardwareReflectedReceiverGIUniforms &u)\n"
+"{\n"
+"  const float2 seed = float2(u.sampling_rand.x * 23.47f + u.sampling_rand.z * 11.13f,\n"
+"                            u.sampling_rand.y * 29.59f + u.sampling_rand.w * 7.71f);\n"
+"  const float2 base = float2(float(tid.x), float(tid.y * 17u));\n"
+"  return hash12(base + offset + seed + float2(float(sample_index) * 0.07f));\n"
+"}\n"
 "inline float fast_gi_average_radiance_weight(float proposal_pdf)\n"
 "{\n"
 "  const float uniform_sphere_pdf = 0.07957747154f;\n"
@@ -2398,6 +2442,26 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "  constexpr sampler linear_sampler(coord::normalized, address::clamp_to_edge, filter::linear);\n"
 "  return world_probe_tx.sample(linear_sampler, atlas_uv, uint(max(int(atlas_coord.w), 0)), level(0.0f)).xyz;\n"
 "}\n"
+"inline float3 sample_reflected_receiver_gi_world_radiance(\n"
+"    texture2d_array<float, access::sample> world_probe_tx,\n"
+"    float3 direction,\n"
+"    constant HardwareReflectedReceiverGIUniforms &u)\n"
+"{\n"
+"  if (u.environment_pad.x == 0) {\n"
+"    return float3(0.0f);\n"
+"  }\n"
+"  const float4 atlas_coord = u.world_probe_atlas_coord;\n"
+"  if (!(atlas_coord.z > 0.0f) || !(atlas_coord.w >= 0.0f)) {\n"
+"    return float3(0.0f);\n"
+"  }\n"
+"  const float3 sample_dir = normalize(direction);\n"
+"  const float2 octahedral_uv = octahedral_uv_from_direction(sample_dir);\n"
+"  const float mip_0_res = max(atlas_coord.z * 4096.0f, 1.0f);\n"
+"  const float2 local_uv = octahedral_uv * ((mip_0_res - 2.0f) / mip_0_res) + 0.5f / mip_0_res;\n"
+"  const float2 atlas_uv = local_uv * atlas_coord.z + atlas_coord.xy;\n"
+"  constexpr sampler linear_sampler(coord::normalized, address::clamp_to_edge, filter::linear);\n"
+"  return world_probe_tx.sample(linear_sampler, atlas_uv, uint(max(int(atlas_coord.w), 0)), level(0.0f)).xyz;\n"
+"}\n"
 "inline float3 sample_trace_world_radiance(texture2d_array<float, access::sample> world_probe_tx,\n"
 "                                          float3 direction,\n"
 "                                          constant HardwareTraceUniforms &u)\n"
@@ -2416,6 +2480,50 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "  const float2 atlas_uv = local_uv * atlas_coord.z + atlas_coord.xy;\n"
 "  constexpr sampler linear_sampler(coord::normalized, address::clamp_to_edge, filter::linear);\n"
 "  return world_probe_tx.sample(linear_sampler, atlas_uv, uint(max(int(atlas_coord.w), 0)), level(0.0f)).xyz;\n"
+"}\n"
+"inline float3 sample_reflected_receiver_gi_direct_light(\n"
+"    uint2 tid,\n"
+"    int sample_index,\n"
+"    int sample_count,\n"
+"    float3 P,\n"
+"    float3 N,\n"
+"    constant FastGILightRecord *light_buf,\n"
+"    constant HardwareReflectedReceiverGIUniforms &u)\n"
+"{\n"
+"  const int light_count = max(u.light_count_pad.x, 0);\n"
+"  const int light_sample_count = min(max(u.light_count_pad.y, 0), sample_count);\n"
+"  if (light_count <= 0 || light_sample_count <= 0 || sample_index >= light_sample_count) {\n"
+"    return float3(0.0f);\n"
+"  }\n"
+"  const int light_index = min(int(reflected_receiver_gi_hash(\n"
+"                                      tid, sample_index, float2(0.41f, 0.67f), u) * float(light_count)),\n"
+"                              light_count - 1);\n"
+"  const FastGILightRecord light = light_buf[light_index];\n"
+"  const uint type = uint(light.direction_type.w + 0.5f);\n"
+"  float3 L = float3(0.0f, 0.0f, 1.0f);\n"
+"  float light_distance = 100000.0f;\n"
+"  if (fast_gi_is_sun(type)) {\n"
+"    L = normalize(-light.direction_type.xyz);\n"
+"  }\n"
+"  else {\n"
+"    const float3 to_light = fast_gi_transform_location(light) - P;\n"
+"    const float dist_sqr = dot(to_light, to_light);\n"
+"    if (!(dist_sqr > 1.0e-10f)) {\n"
+"      return float3(0.0f);\n"
+"    }\n"
+"    light_distance = sqrt(dist_sqr);\n"
+"    L = to_light / light_distance;\n"
+"  }\n"
+"  const float attenuation = fast_gi_light_surface_attenuation(light, type, L, light_distance);\n"
+"  const float facing = saturate(dot(N, L));\n"
+"  if (!(attenuation > 1.0e-6f) || !(facing > 1.0e-4f)) {\n"
+"    return float3(0.0f);\n"
+"  }\n"
+"  const float direct_scale = float(sample_count) / float(light_sample_count);\n"
+"  const float power = light.color_diffuse_power.w *\n"
+"                      fast_gi_light_point_power(light, type, light_distance, L) * attenuation *\n"
+"                      facing * float(light_count) * direct_scale;\n"
+"  return light.color_diffuse_power.xyz * power;\n"
 "}\n"
 "inline float4 sample_trace_emissive_direction(uint2 tid,\n"
 "                                             int sample_index,\n"
@@ -4057,6 +4165,90 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "  fast_gi_error_img.write(mix(history_error, normalized_error, history_blend), atlas_voxel);\n"
 "  fast_gi_visibility_img.write(mix(history_visibility, visibility_target, history_blend), atlas_voxel);\n"
 "}\n"
+"kernel void eevee_hardware_trace_reflected_receiver_gi(\n"
+"    uint3 threadgroup_id [[threadgroup_position_in_grid]],\n"
+"    uint3 local_id [[thread_position_in_threadgroup]],\n"
+"    instance_acceleration_structure scene [[buffer(0)]],\n"
+"    constant HardwareReflectedReceiverGIUniforms &uniforms [[buffer(1)]],\n"
+"    constant float4 *emissive_radiance [[buffer(2)]],\n"
+"    constant float4 *diffuse_albedo [[buffer(3)]],\n"
+"    constant float4 *triangle_normals [[buffer(4)]],\n"
+"    constant TriangleNormalRange *triangle_normal_ranges [[buffer(5)]],\n"
+"    constant FastGILightRecord *receiver_gi_lights [[buffer(6)]],\n"
+"    constant uint *tiles_coord_buf [[buffer(7)]],\n"
+"    texture2d<float, access::write> receiver_gi_img [[texture(0)]],\n"
+"    texture2d_array<float, access::sample> world_probe_tx [[texture(1)]],\n"
+"    texture2d<float, access::read> ray_time_img [[texture(2)]],\n"
+"    texture2d<float, access::read> hit_albedo_img [[texture(3)]],\n"
+"    texture2d<float, access::read> hit_normal_img [[texture(4)]],\n"
+"    texture2d<float, access::read> hit_world_position_img [[texture(5)]])\n"
+"{\n"
+"  const uint2 tile_coord = unpackUvec2x16(tiles_coord_buf[threadgroup_id.x]);\n"
+"  const uint2 tid = uint2(local_id.xy) + tile_coord * 8u;\n"
+"  if (tid.x >= uint(uniforms.resolution_samples.x) || tid.y >= uint(uniforms.resolution_samples.y) ||\n"
+"      tid.x >= receiver_gi_img.get_width() || tid.y >= receiver_gi_img.get_height()) {\n"
+"    return;\n"
+"  }\n"
+"  const uint resolution_divisor = uint(max(uniforms.resolution_samples.z, 1));\n"
+"  const uint2 anchor_tid = min((tid / resolution_divisor) * resolution_divisor + resolution_divisor / 2u,\n"
+"                               uint2(uint(uniforms.resolution_samples.x - 1),\n"
+"                                     uint(uniforms.resolution_samples.y - 1)));\n"
+"  if (any(tid != anchor_tid)) {\n"
+"    return;\n"
+"  }\n"
+"  if (!(ray_time_img.read(tid).x > 0.0f)) {\n"
+"    receiver_gi_img.write(float4(0.0f), tid);\n"
+"    return;\n"
+"  }\n"
+"  const float3 P = hit_world_position_img.read(tid).xyz;\n"
+"  float3 N = hit_normal_img.read(tid).xyz;\n"
+"  const float3 receiver_albedo = max(hit_albedo_img.read(tid).xyz, float3(0.0f));\n"
+"  if (!all(isfinite(P)) || !all(isfinite(N)) || dot(N, N) < 1.0e-10f ||\n"
+"      max(receiver_albedo.x, max(receiver_albedo.y, receiver_albedo.z)) <= 1.0e-5f) {\n"
+"    receiver_gi_img.write(float4(0.0f), tid);\n"
+"    return;\n"
+"  }\n"
+"  N = normalize(N);\n"
+"  const int sample_count = max(uniforms.resolution_samples.w, 1);\n"
+"  const float normal_bias = max(uniforms.normal_bias_pad.x, 1.0e-4f);\n"
+"  const float ray_tmin = max(5.0e-4f, normal_bias * 0.5f);\n"
+"  const float ray_tmax = 1000.0f;\n"
+"  intersector<triangle_data, instancing, max_levels<2>> i;\n"
+"  i.assume_geometry_type(geometry_type::triangle);\n"
+"  i.force_opacity(forced_opacity::opaque);\n"
+"  float3 accum = float3(0.0f);\n"
+"  for (int sample_index = 0; sample_index < sample_count; sample_index++) {\n"
+"    const float3 sample_dir = sample_reflected_receiver_gi_direction(tid, sample_index, N, uniforms);\n"
+"    const float3 origin = P + N * normal_bias;\n"
+"    intersection_result<triangle_data, instancing, max_levels<2>> intersection = i.intersect(\n"
+"        ray(origin, sample_dir, ray_tmin, ray_tmax), scene);\n"
+"    float3 incoming = float3(0.0f);\n"
+"    if (intersection.type == intersection_type::triangle) {\n"
+"      const uint user_id = intersection.user_instance_id[0];\n"
+"      incoming += max(emissive_radiance[user_id].xyz, float3(0.0f));\n"
+"      const float3 hit_albedo = max(diffuse_albedo[user_id].xyz, float3(0.0f));\n"
+"      if (max(hit_albedo.x, max(hit_albedo.y, hit_albedo.z)) > 1.0e-4f) {\n"
+"        const float3 hit_N = fast_gi_hit_normal(\n"
+"            user_id, intersection.primitive_id, sample_dir, triangle_normals, triangle_normal_ranges);\n"
+"        const float3 hit_P = origin + sample_dir * intersection.distance;\n"
+"        incoming += hit_albedo * sample_reflected_receiver_gi_direct_light(tid,\n"
+"                                                                          sample_index,\n"
+"                                                                          sample_count,\n"
+"                                                                          hit_P,\n"
+"                                                                          hit_N,\n"
+"                                                                          receiver_gi_lights,\n"
+"                                                                          uniforms) * 0.75f;\n"
+"        incoming += hit_albedo * sample_reflected_receiver_gi_world_radiance(\n"
+"                                    world_probe_tx, hit_N, uniforms) * 0.35f;\n"
+"      }\n"
+"    }\n"
+"    else {\n"
+"      incoming = sample_reflected_receiver_gi_world_radiance(world_probe_tx, sample_dir, uniforms);\n"
+"    }\n"
+"    accum += max(incoming, float3(0.0f));\n"
+"  }\n"
+"  receiver_gi_img.write(float4(accum / float(sample_count), 1.0f), tid);\n"
+"}\n"
          "kernel void eevee_hardware_trace_local_shadow(\n"
          "    uint2 tid [[thread_position_in_grid]],\n"
          "    instance_acceleration_structure scene [[buffer(0)]],\n"
@@ -4378,6 +4570,36 @@ static id<MTLComputePipelineState> get_hardware_fast_gi_pipeline(id<MTLDevice> d
   [function release];
   if (pipeline == nil && error != nil) {
     fprintf(stderr, "Metal RT Fast GI pipeline creation failed: %s\n",
+            error.localizedDescription.UTF8String);
+  }
+  return pipeline;
+}
+
+static id<MTLComputePipelineState> get_hardware_reflected_receiver_gi_pipeline(
+    id<MTLDevice> device) API_AVAILABLE(macos(14.0))
+{
+  static id<MTLComputePipelineState> pipeline = nil;
+  if (pipeline != nil) {
+    return pipeline;
+  }
+
+  id<MTLLibrary> library = get_hardware_trace_library(device);
+  if (library == nil) {
+    return nil;
+  }
+
+  NSError *error = nil;
+  id<MTLFunction> function = [library
+      newFunctionWithName:@"eevee_hardware_trace_reflected_receiver_gi"];
+  if (function == nil) {
+    return nil;
+  }
+
+  pipeline = [device newComputePipelineStateWithFunction:function error:&error];
+  [function release];
+  if (pipeline == nil && error != nil) {
+    fprintf(stderr,
+            "Metal RT reflected receiver GI pipeline creation failed: %s\n",
             error.localizedDescription.UTF8String);
   }
   return pipeline;
@@ -5706,6 +5928,143 @@ bool raytrace_scene_trace_fast_gi(GPUMetalRaytraceScene *scene,
                                           std::max<NSUInteger>(1, params.brick_extent.z));
     const MTLSize group_size = MTLSizeMake(4, 4, 4);
     [encoder dispatchThreads:grid_size threadsPerThreadgroup:group_size];
+    [encoder endEncoding];
+
+    [command_buffer commit];
+    const bool wait_for_completion = env_flag_enabled("BLENDER_EEVEE_HWRT_FORCE_SYNC");
+    if (wait_for_completion) {
+      [command_buffer waitUntilCompleted];
+    }
+
+    const bool success = wait_for_completion ?
+                             (command_buffer.status == MTLCommandBufferStatusCompleted) :
+                             true;
+    if (success && wait_for_completion) {
+      GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+    }
+    return success;
+  }
+#endif
+
+  return false;
+}
+
+bool raytrace_scene_trace_reflected_receiver_gi(
+    GPUMetalRaytraceScene *scene, const GPUMetalRaytraceReflectedReceiverGIParams &params)
+{
+  if (scene == nullptr || scene->top_level_acceleration_structure == nil ||
+      params.receiver_gi_tx == nullptr || params.dispatch_buf == nullptr ||
+      params.tiles_coord_buf == nullptr || params.ray_time_tx == nullptr ||
+      params.hit_albedo_tx == nullptr || params.hit_normal_tx == nullptr ||
+      params.hit_world_position_tx == nullptr)
+  {
+    return false;
+  }
+
+  if (!GPU_hardware_raytracing_support()) {
+    return false;
+  }
+
+#if defined(MAC_OS_VERSION_14_0)
+  if (@available(macos 14.0, *)) {
+    MTLContext *ctx = MTLContext::get();
+    if (ctx == nullptr || ctx->device == nil || ctx->queue == nil) {
+      return false;
+    }
+
+    id<MTLComputePipelineState> pipeline = get_hardware_reflected_receiver_gi_pipeline(
+        ctx->device);
+    if (pipeline == nil) {
+      return false;
+    }
+
+    MTLTexture *receiver_gi_tx = unwrap(params.receiver_gi_tx);
+    MTLTexture *world_probe_tx = unwrap(params.world_probe_tx);
+    MTLTexture *ray_time_tx = unwrap(params.ray_time_tx);
+    MTLTexture *hit_albedo_tx = unwrap(params.hit_albedo_tx);
+    MTLTexture *hit_normal_tx = unwrap(params.hit_normal_tx);
+    MTLTexture *hit_world_position_tx = unwrap(params.hit_world_position_tx);
+    MTLStorageBuf *dispatch_ssbo = static_cast<MTLStorageBuf *>(params.dispatch_buf);
+    MTLStorageBuf *tiles_coord_ssbo = static_cast<MTLStorageBuf *>(params.tiles_coord_buf);
+    if (receiver_gi_tx == nullptr || ray_time_tx == nullptr || hit_albedo_tx == nullptr ||
+        hit_normal_tx == nullptr || hit_world_position_tx == nullptr || dispatch_ssbo == nullptr ||
+        tiles_coord_ssbo == nullptr)
+    {
+      return false;
+    }
+
+    HardwareReflectedReceiverGIUniforms uniforms = {};
+    uniforms.resolution_samples = int4(params.tracing_resolution.x,
+                                       params.tracing_resolution.y,
+                                       std::max(params.resolution_divisor, 1),
+                                       std::max(params.sample_count, 1));
+    uniforms.normal_bias_pad = float4(std::max(params.normal_bias, 1.0e-4f), 0.0f, 0.0f, 0.0f);
+    uniforms.environment_pad = int4(params.use_environment ? 1 : 0, 0, 0, 0);
+    uniforms.light_count_pad = int4(std::max(params.light_count, 0),
+                                    std::max(params.light_sample_count, 0),
+                                    0,
+                                    0);
+    uniforms.sampling_rand = params.sampling_rand;
+    uniforms.world_probe_atlas_coord = params.world_probe_atlas_coord;
+
+    MTLStorageBuf *light_ssbo = (params.light_buf != nullptr) ?
+                                    static_cast<MTLStorageBuf *>(params.light_buf) :
+                                    nullptr;
+    id<MTLBuffer> light_handle = (light_ssbo != nullptr) ? light_ssbo->get_metal_buffer() : nil;
+    id<MTLBuffer> dispatch_buf_handle = dispatch_ssbo->get_metal_buffer();
+    id<MTLBuffer> tiles_coord_handle = tiles_coord_ssbo->get_metal_buffer();
+    if (dispatch_buf_handle == nil || tiles_coord_handle == nil) {
+      return false;
+    }
+
+    id<MTLCommandBuffer> command_buffer = [ctx->queue commandBuffer];
+    NSMutableArray *retained_resources = retained_resources_for_command_buffer(
+        command_buffer, "Metal RT reflected receiver GI");
+    retain_scene_resources(scene, retained_resources);
+    id<MTLComputeCommandEncoder> encoder = [command_buffer computeCommandEncoder];
+    if (encoder == nil) {
+      return false;
+    }
+
+    [encoder setComputePipelineState:pipeline];
+    encoder_use_scene_geometry_resources(encoder, scene);
+    encoder_use_scene_shading_resources(encoder, scene);
+    if (light_handle != nil) {
+      [encoder useResource:light_handle usage:MTLResourceUsageRead];
+    }
+    [encoder useResource:dispatch_buf_handle usage:MTLResourceUsageRead];
+    [encoder useResource:tiles_coord_handle usage:MTLResourceUsageRead];
+    [encoder setAccelerationStructure:scene->top_level_acceleration_structure atBufferIndex:0];
+    [encoder setBytes:&uniforms length:sizeof(uniforms) atIndex:1];
+    [encoder setBuffer:scene->emissive_radiance_buffer offset:0 atIndex:2];
+    [encoder setBuffer:scene->diffuse_albedo_buffer offset:0 atIndex:3];
+    [encoder setBuffer:scene->triangle_normal_buffer offset:0 atIndex:4];
+    [encoder setBuffer:scene->triangle_normal_range_buffer offset:0 atIndex:5];
+    [encoder setBuffer:light_handle offset:0 atIndex:6];
+    [encoder setBuffer:tiles_coord_handle offset:0 atIndex:7];
+    id<MTLTexture> receiver_gi_handle = receiver_gi_tx->get_metal_handle();
+    id<MTLTexture> world_probe_handle = world_probe_tx ? world_probe_tx->get_metal_handle() : nil;
+    id<MTLTexture> ray_time_handle = ray_time_tx->get_metal_handle();
+    id<MTLTexture> hit_albedo_handle = hit_albedo_tx->get_metal_handle();
+    id<MTLTexture> hit_normal_handle = hit_normal_tx->get_metal_handle();
+    id<MTLTexture> hit_world_position_handle = hit_world_position_tx->get_metal_handle();
+    if (receiver_gi_handle == nil || ray_time_handle == nil || hit_albedo_handle == nil ||
+        hit_normal_handle == nil || hit_world_position_handle == nil)
+    {
+      [encoder endEncoding];
+      return false;
+    }
+    [encoder setTexture:receiver_gi_handle atIndex:0];
+    [encoder setTexture:world_probe_handle atIndex:1];
+    [encoder setTexture:ray_time_handle atIndex:2];
+    [encoder setTexture:hit_albedo_handle atIndex:3];
+    [encoder setTexture:hit_normal_handle atIndex:4];
+    [encoder setTexture:hit_world_position_handle atIndex:5];
+
+    const MTLSize group_size = MTLSizeMake(8, 8, 1);
+    [encoder dispatchThreadgroupsWithIndirectBuffer:dispatch_buf_handle
+                               indirectBufferOffset:0
+                              threadsPerThreadgroup:group_size];
     [encoder endEncoding];
 
     [command_buffer commit];

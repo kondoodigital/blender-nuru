@@ -2683,10 +2683,10 @@ struct SceneEEVEE {
   int hardware_raytracing_features = RAYTRACE_EEVEE_HARDWARE_GI;
   /** Off or On for diffuse Hardware RT GI. Legacy Fast/Refine values are upgraded to On. */
   int hardware_raytracing_gi_mode = RAYTRACE_EEVEE_GI_MODE_ACCURATE;
-  /** Enable the low-res off-camera reflected diffuse GI cache. */
+  /** Enable secondary reflected diffuse GI for Hardware RT mirrors. */
   int use_hardware_raytracing_indirect_gi_cache = 1;
-  /** Resolution divisor for the low-res off-camera reflected diffuse GI cache. */
-  int hardware_raytracing_indirect_gi_resolution = 16;
+  /** Resolution divisor for secondary reflected diffuse GI. */
+  int hardware_raytracing_indirect_gi_resolution = 4;
   /** Reflection ownership mode for the experimental Hardware RT path. */
   int hardware_raytracing_reflection_mode = RAYTRACE_EEVEE_SPECULAR_MODE_OFF;
   /** Refraction ownership mode for the experimental Hardware RT path. */

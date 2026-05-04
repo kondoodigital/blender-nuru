@@ -114,6 +114,7 @@ set(SRC_GLSL_COMP
   eevee_ray_hardware_indirect_gi_cache_store_comp.glsl
   eevee_ray_hardware_direct_light_tile_compact_comp.glsl
   eevee_ray_hardware_direct_light_visibility_comp.glsl
+  eevee_ray_hardware_reflected_receiver_gi_blur_comp.glsl
   eevee_ray_hardware_trace_tile_compact_comp.glsl
   eevee_ray_hardware_tile_compact_comp.glsl
   eevee_ray_hit_eval_compact_comp.glsl
