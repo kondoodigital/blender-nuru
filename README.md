@@ -5,7 +5,7 @@
 <div align="center">
   <img src="images/nuru_logo_512.png" alt="Nuru - Eevee Raytrace for Blender, powered by Kondoo Digital" width="512">
 
-  <p><strong>Metal Hardware Ray Tracing for Blender Eevee.</strong></p>
+  <p><strong>Metal/RTX Hardware Ray Tracing for Blender Eevee.</strong></p>
   <p>A Blender branch by Kondoo Digital GmbH for per-feature Hardware RT in Eevee.</p>
 
   <p>
