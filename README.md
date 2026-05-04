@@ -157,9 +157,6 @@ If RNA, DNA, or blend-file versioning changed:
 cmake --build builds/macos-dev --target makesdna makesrna bf_dna bf_rna bf_blenloader bf_gpu bf_draw blender -j 12
 ```
 
-Render and viewport evidence is user-owned in this repository. Do not run local
-render or viewport validation unless explicitly requested.
-
 ## Documentation
 
 - [`docs/eevee_hwrt_first_release.md`](docs/eevee_hwrt_first_release.md) - first-release runtime contract.
