@@ -1046,8 +1046,7 @@ void hardware_hit_closure_light_terms(int2 texel_fullres,
   const bool is_transmission = closure_has_transmission(cl.type);
   const bool is_diffuse_family = (cl.type == CLOSURE_BSDF_DIFFUSE_ID) ||
                                  (cl.type == CLOSURE_BSSRDF_BURLEY_ID);
-  const bool scene_final_reflected_diffuse = scene_final_specular_phase && !primary_is_diffuse_gi &&
-                                             is_diffuse_family;
+  const bool scene_final_reflected_diffuse = scene_final_specular_phase && is_diffuse_family;
   const bool direct_lit_refracted_textured_receiver =
       scene_final_specular_phase && !primary_is_diffuse_gi &&
       ((imageLoadFast(hit_identity_img, texel).z & 16u) != 0u);
@@ -1204,8 +1203,7 @@ void layered_receiver_hit_closure_light_terms(int2 texel_fullres,
   const bool is_transmission = closure_has_transmission(cl.type);
   const bool is_diffuse_family = (cl.type == CLOSURE_BSDF_DIFFUSE_ID) ||
                                  (cl.type == CLOSURE_BSSRDF_BURLEY_ID);
-  const bool scene_final_reflected_diffuse = scene_final_specular_phase && !primary_is_diffuse_gi &&
-                                             is_diffuse_family;
+  const bool scene_final_reflected_diffuse = scene_final_specular_phase && is_diffuse_family;
   const bool direct_lit_refracted_textured_receiver =
       scene_final_specular_phase && !primary_is_diffuse_gi &&
       ((texelFetch(layered_receiver_hit_identity_tx, texel, 0).z & 16u) != 0u);
@@ -1544,8 +1542,7 @@ void transmission_receiver_hit_closure_light_terms(int2 texel_fullres,
   const bool is_transmission = closure_has_transmission(cl.type);
   const bool is_diffuse_family = (cl.type == CLOSURE_BSDF_DIFFUSE_ID) ||
                                  (cl.type == CLOSURE_BSSRDF_BURLEY_ID);
-  const bool scene_final_reflected_diffuse = scene_final_specular_phase && !primary_is_diffuse_gi &&
-                                             is_diffuse_family;
+  const bool scene_final_reflected_diffuse = scene_final_specular_phase && is_diffuse_family;
   const bool direct_lit_refracted_textured_receiver =
       scene_final_specular_phase && !primary_is_diffuse_gi &&
       ((texelFetch(transmission_receiver_hit_identity_tx, texel, 0).z & 16u) != 0u);
@@ -2239,14 +2236,31 @@ void main()
           texel, P_hit, N, true, hardware_hit_uses_caustics(), transmission_layer_radiance);
     }
 
+    float3 visible_receiver_radiance = float3(0.0f);
+    const bool scene_final_visible_diffuse_receiver =
+        scene_final_specular_phase &&
+        ((base_cl.type == CLOSURE_BSDF_DIFFUSE_ID) || (base_cl.type == CLOSURE_BSSRDF_BURLEY_ID)) &&
+        hardware_hit_raster_radiance_load(
+            texel, P_hit, N, hit_prefers_back_radiance, false, visible_receiver_radiance);
+
     if (!precombine_specular_caustics_phase) {
-      radiance += base_direct;
-      if (primary_is_diffuse_gi || scene_final_specular_phase) {
-        radiance += base_probe;
+      if (scene_final_visible_diffuse_receiver) {
+        /* Mirrors can reflect the resolved GI that is already visible for the receiver in the
+         * main view. This is only used after the traced hit validates against the visible surface,
+         * so off-camera receivers still stay owned by the traced/probe fallback paths. The
+         * scene-final resolve applies the indirect scale later, while the visible combined buffer
+         * is already scaled. Undo that scale here to avoid brightening reflected screen GI twice. */
+        radiance += visible_receiver_radiance / max(uniform_buf.clamp.indirect_scale, 1.0e-4f);
       }
-      radiance += specular_direct * principled_reflection_layer_visibility;
-      if (primary_is_diffuse_gi || scene_final_specular_phase) {
-        radiance += specular_probe * principled_reflection_layer_visibility;
+      else {
+        radiance += base_direct;
+        if (primary_is_diffuse_gi || scene_final_specular_phase) {
+          radiance += base_probe;
+        }
+        radiance += specular_direct * principled_reflection_layer_visibility;
+        if (primary_is_diffuse_gi || scene_final_specular_phase) {
+          radiance += specular_probe * principled_reflection_layer_visibility;
+        }
       }
       if (preserved_layered_scene_final &&
           dot(layered_receiver_radiance, layered_receiver_radiance) > 1.0e-10f)
