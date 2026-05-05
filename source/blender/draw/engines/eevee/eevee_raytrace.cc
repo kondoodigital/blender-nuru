@@ -3254,6 +3254,29 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
     trace_params.refraction_bounces = data_.hardware_refraction_bounces;
     trace_params.resolution_bias = data_.resolution_bias;
     trace_params.clamp_indirect = 1.0e10f;
+    Vector<LightData> local_lights;
+    Vector<LightData> sun_lights;
+    Vector<int> sun_light_world_slots;
+    inst_.lights.append_sync_local_lights(local_lights);
+    inst_.lights.append_sync_sun_lights(sun_lights, &sun_light_world_slots);
+    const int trace_light_count = min_ii(256, int(local_lights.size() + sun_lights.size()));
+    for (int light_index = 0; light_index < trace_light_count; light_index++) {
+      const LightData &light = (light_index < local_lights.size()) ?
+                                   local_lights[light_index] :
+                                   sun_lights[light_index - local_lights.size()];
+      hardware_fast_gi_light_buf_.get_or_resize(light_index) =
+          hardware_fast_gi_light_record_from_light(light);
+    }
+    if (trace_light_count > 0) {
+      hardware_fast_gi_light_buf_.resize(trace_light_count);
+      hardware_fast_gi_light_buf_.push_update();
+    }
+    trace_params.light_buf = (trace_light_count > 0) ?
+                                 static_cast<gpu::StorageBuf *>(hardware_fast_gi_light_buf_) :
+                                 nullptr;
+    trace_params.light_count = trace_light_count;
+    trace_params.light_sample_count = hardware_fast_gi_direct_light_sample_count(
+        trace_light_count, inst_.is_viewport(), hardware_fast_gi_quality_tier_);
     const SphereProbe &world_probe = inst_.sphere_probes.world_sphere_probe();
     const bool world_probe_available = world_probe.atlas_coord.atlas_layer >= 0 &&
                                        world_probe.atlas_coord.subdivision_lvl >= 0;

@@ -396,6 +396,7 @@ struct HardwareTraceUniforms {
   float clamp_indirect;
   float4 world_probe_atlas_coord;
   int4 use_environment_pad;
+  int4 light_count_pad;
   float4 sampling_rand;
 };
 
@@ -1483,6 +1484,7 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
          "  float clamp_indirect;\n"
          "  float4 world_probe_atlas_coord;\n"
          "  int4 use_environment_pad;\n"
+"  int4 light_count_pad;\n"
          "  float4 sampling_rand;\n"
          "};\n"
          "struct HardwareShadowUniforms {\n"
@@ -2593,6 +2595,63 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "  const float pdf = (1.0f / float(light_count)) / cone_solid_angle;\n"
 "  return float4(dir, pdf);\n"
 "}\n"
+"inline float3 sample_trace_direct_light(uint2 tid,\n"
+"                                        int sample_index,\n"
+"                                        int sample_count,\n"
+"                                        float3 P,\n"
+"                                        float3 N,\n"
+"                                        instance_acceleration_structure scene,\n"
+"                                        constant FastGILightRecord *light_buf,\n"
+"                                        constant HardwareTraceUniforms &u)\n"
+"{\n"
+"  const int light_count = max(u.light_count_pad.x, 0);\n"
+"  const int light_sample_count = min(max(u.light_count_pad.y, 0), sample_count);\n"
+"  if (light_count <= 0 || light_sample_count <= 0 || sample_index >= light_sample_count) {\n"
+"    return float3(0.0f);\n"
+"  }\n"
+"  const int light_index = min(int(rand2_trace(tid,\n"
+"                                             sample_index,\n"
+"                                             211 + sample_index * 19,\n"
+"                                             u).x * float(light_count)),\n"
+"                              light_count - 1);\n"
+"  const FastGILightRecord light = light_buf[light_index];\n"
+"  const uint type = uint(light.direction_type.w + 0.5f);\n"
+"  float3 L = float3(0.0f, 0.0f, 1.0f);\n"
+"  float light_distance = 100000.0f;\n"
+"  if (fast_gi_is_sun(type)) {\n"
+"    L = normalize(-light.direction_type.xyz);\n"
+"  }\n"
+"  else {\n"
+"    const float3 to_light = fast_gi_transform_location(light) - P;\n"
+"    const float dist_sqr = dot(to_light, to_light);\n"
+"    if (!(dist_sqr > 1.0e-10f)) {\n"
+"      return float3(0.0f);\n"
+"    }\n"
+"    light_distance = sqrt(dist_sqr);\n"
+"    L = to_light / light_distance;\n"
+"  }\n"
+"  const float attenuation = fast_gi_light_surface_attenuation(light, type, L, light_distance);\n"
+"  const float facing = saturate(dot(N, L));\n"
+"  if (!(attenuation > 1.0e-6f) || !(facing > 1.0e-4f)) {\n"
+"    return float3(0.0f);\n"
+"  }\n"
+"  const float normal_bias = max(1.0e-3f, 5.0e-4f * max(light_distance, 1.0f));\n"
+"  const float3 origin = P + N * normal_bias;\n"
+"  const float ray_tmax = fast_gi_is_sun(type) ? 100000.0f : max(light_distance - normal_bias, 5.0e-4f);\n"
+"  intersector<triangle_data, instancing, max_levels<2>> i;\n"
+"  i.assume_geometry_type(geometry_type::triangle);\n"
+"  i.force_opacity(forced_opacity::opaque);\n"
+"  intersection_result<triangle_data, instancing, max_levels<2>> intersection = i.intersect(\n"
+"      ray(origin, L, 5.0e-4f, ray_tmax), scene);\n"
+"  if (intersection.type == intersection_type::triangle) {\n"
+"    return float3(0.0f);\n"
+"  }\n"
+"  const float direct_scale = float(sample_count) / float(light_sample_count);\n"
+"  const float power = light.color_diffuse_power.w *\n"
+"                      fast_gi_light_point_power(light, type, light_distance, L) * attenuation *\n"
+"                      facing * float(light_count) * direct_scale;\n"
+"  return light.color_diffuse_power.xyz * power;\n"
+"}\n"
 "inline float4 sample_fast_gi_cascade(texture3d<float, access::sample> fast_gi_history_tx,\n"
 "                                     float3 P,\n"
 "                                     int cascade_index,\n"
@@ -2682,6 +2741,7 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
          "    constant float4 *triangle_smooth_normals [[buffer(8)]],\n"
          "    constant float4 *triangle_local_positions [[buffer(9)]],\n"
 "    constant EmissiveLightRecord *emissive_lights [[buffer(10)]],\n"
+"    constant FastGILightRecord *trace_lights [[buffer(11)]],\n"
          "    texture2d<half, access::read> ray_data_tx [[texture(0)]],\n"
          "    depth2d<float, access::sample> depth_tx [[texture(1)]],\n"
 "    texture2d_array<uint, access::read> gbuf_header_tx [[texture(2)]],\n"
@@ -3548,8 +3608,10 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "  /* Reflected receiver Secondary GI is owned by eevee_hardware_trace_reflected_receiver_gi.\n"
 "   * Keep this scene-final trace responsible for exporting the hit payload only; otherwise the\n"
 "   * mirror receives the old inline continuation plus the new blurred receiver GI. */\n"
-"  const bool scene_final_diffuse_receiver = false;\n"
-"  if (scene_final_diffuse_receiver) {\n"
+"  const bool primary_diffuse_transport_receiver = supports_hardware_gi &&\n"
+"                                                  !scene_final_specular_phase &&\n"
+"                                                  (final_proxy_closure == HWRT_CLOSURE_DIFFUSE);\n"
+"  if (primary_diffuse_transport_receiver) {\n"
 "    const int diffuse_sample_count = 8;\n"
 "    const float3 diffuse_origin = final_position + final_normal * 2.0e-3f;\n"
 "    float3 incoming = float3(0.0f);\n"
@@ -3581,6 +3643,21 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "        const uint diffuse_user_id = diffuse_intersection.user_instance_id[0];\n"
 "        incoming += min(max(emissive_radiance[diffuse_user_id].xyz, float3(0.0f)),\n"
 "                        float3(uniforms.clamp_indirect)) * diffuse_weight;\n"
+"        const float3 diffuse_hit_P = diffuse_origin + diffuse_dir * diffuse_intersection.distance;\n"
+"        const float3 diffuse_hit_N = fast_gi_hit_normal(\n"
+"            diffuse_user_id,\n"
+"            diffuse_intersection.primitive_id,\n"
+"            diffuse_dir,\n"
+"            triangle_normals,\n"
+"            triangle_normal_ranges);\n"
+"        incoming += sample_trace_direct_light(tid,\n"
+"                                              diffuse_sample,\n"
+"                                              diffuse_sample_count,\n"
+"                                              diffuse_hit_P,\n"
+"                                              diffuse_hit_N,\n"
+"                                              scene,\n"
+"                                              trace_lights,\n"
+"                                              uniforms) * diffuse_weight;\n"
 "      }\n"
 "      else if (!use_emissive_guiding) {\n"
 "        incoming += min(sample_trace_world_radiance(world_probe_tx, diffuse_dir, uniforms),\n"
@@ -5213,7 +5290,16 @@ bool raytrace_scene_trace(GPUMetalRaytraceScene *scene, const GPUMetalRaytraceTr
                                         std::max(scene->emissive_light_count, 0),
                                         0,
                                         0);
+    uniforms.light_count_pad = int4(std::max(params.light_count, 0),
+                                    std::max(params.light_sample_count, 0),
+                                    0,
+                                    0);
     uniforms.sampling_rand = params.sampling_rand;
+
+    MTLStorageBuf *light_ssbo = (params.light_buf != nullptr) ?
+                                    static_cast<MTLStorageBuf *>(params.light_buf) :
+                                    nullptr;
+    id<MTLBuffer> light_handle = (light_ssbo != nullptr) ? light_ssbo->get_metal_buffer() : nil;
 
     const bool capture_started = begin_hardware_trace_capture(ctx->queue);
 
@@ -5241,6 +5327,9 @@ bool raytrace_scene_trace(GPUMetalRaytraceScene *scene, const GPUMetalRaytraceTr
     }
     [encoder useResource:dispatch_buf_handle usage:MTLResourceUsageRead];
     [encoder useResource:tiles_coord_handle usage:MTLResourceUsageRead];
+    if (light_handle != nil) {
+      [encoder useResource:light_handle usage:MTLResourceUsageRead];
+    }
     [encoder setBuffer:scene->emissive_radiance_buffer offset:0 atIndex:2];
     [encoder setBuffer:scene->diffuse_albedo_buffer offset:0 atIndex:3];
     [encoder setBuffer:scene->material_proxy_buffer offset:0 atIndex:4];
@@ -5250,6 +5339,7 @@ bool raytrace_scene_trace(GPUMetalRaytraceScene *scene, const GPUMetalRaytraceTr
     [encoder setBuffer:scene->triangle_smooth_normal_buffer offset:0 atIndex:8];
     [encoder setBuffer:scene->triangle_local_position_buffer offset:0 atIndex:9];
     [encoder setBuffer:scene->emissive_light_buffer offset:0 atIndex:10];
+    [encoder setBuffer:light_handle offset:0 atIndex:11];
     id<MTLTexture> ray_data_handle = ray_data_tx->get_metal_handle();
     id<MTLTexture> depth_handle = depth_tx->get_metal_handle();
     id<MTLTexture> gbuf_header_handle = gbuf_header_tx->get_metal_handle();

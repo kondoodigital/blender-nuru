@@ -101,6 +101,7 @@ struct GPUMetalRaytraceTraceParams {
   gpu::Texture *transmission_receiver_barycentric_tx = nullptr;
   gpu::StorageBuf *dispatch_buf = nullptr;
   gpu::StorageBuf *tiles_coord_buf = nullptr;
+  gpu::StorageBuf *light_buf = nullptr;
   float4x4 viewinv = float4x4::identity();
   float4x4 wininv = float4x4::identity();
   int2 full_resolution = int2(1);
@@ -114,6 +115,8 @@ struct GPUMetalRaytraceTraceParams {
   float clamp_indirect = 1.0e10f;
   float4 world_probe_atlas_coord = float4(0.0f, 0.0f, 0.0f, -1.0f);
   bool use_environment = false;
+  int light_count = 0;
+  int light_sample_count = 0;
   float4 sampling_rand = float4(0.0f);
 };
 
