@@ -5,7 +5,7 @@
 <div align="center">
   <img src="images/nuru_logo_512.png" alt="Nuru - Eevee Raytrace for Blender, powered by Kondoo Digital" width="512">
 
-  <p><strong>Metal Hardware Ray Tracing for Blender Eevee.</strong></p>
+  <p><strong>Metal/RTX Hardware Ray Tracing for Blender Eevee.</strong></p>
   <p>A Blender branch by Kondoo Digital GmbH for per-feature Hardware RT in Eevee.</p>
 
   <p>
@@ -23,9 +23,12 @@ Nuru is an experimental Blender/Eevee Hardware RT branch. It adds a user-facing
 `Nuru Raytracing` method to Eevee and lets artists decide which parts of a scene
 are owned by hardware ray tracing and which parts remain on classic Eevee.
 
-The current **DIAMOND 1** implementation is Metal-first. It targets Apple GPUs
+The current **DIAMOND** implementation is Metal-first. It targets Apple GPUs
 with hardware ray tracing support and keeps Blender's normal multi-platform
-source tree intact. OptiX and CUDA Nuru backend support are Work in Progress.
+source tree intact. 
+
+The **EMERALD** devlopment is OptiX and RTX Nuru backend support and is Work in Progress.
+
 
 <table>
   <tr>

@@ -416,6 +416,9 @@ elseif(WIN32)
   endif()
   set(TARGETDIR_SITE_PACKAGES "${TARGETDIR_VER}/python/lib/site-packages")
 elseif(APPLE)
+  set(BLENDER_MACOS_APP_BUNDLE_NAME "Blender-Nuru")
+  set(BLENDER_MACOS_APP_BUNDLE "${BLENDER_MACOS_APP_BUNDLE_NAME}.app")
+
   if(WITH_PYTHON_MODULE)
     if(WITH_INSTALL_PORTABLE)
       set(TARGETDIR_BPY "bpy")
@@ -429,9 +432,9 @@ elseif(APPLE)
       set(TARGETDIR_LIB ${PYTHON_SITE_PACKAGES}/bpy/lib)
     endif()
   else()
-    set(TARGETDIR_VER "Blender.app/Contents/Resources/${BLENDER_VERSION}")
-    set(TARGETDIR_LIB "Blender.app/Contents/Resources/lib")
-    set(TARGETDIR_TEXT "Blender.app/Contents/Resources/text")
+    set(TARGETDIR_VER "${BLENDER_MACOS_APP_BUNDLE}/Contents/Resources/${BLENDER_VERSION}")
+    set(TARGETDIR_LIB "${BLENDER_MACOS_APP_BUNDLE}/Contents/Resources/lib")
+    set(TARGETDIR_TEXT "${BLENDER_MACOS_APP_BUNDLE}/Contents/Resources/text")
   endif()
   set(TARGETDIR_SITE_PACKAGES "${TARGETDIR_VER}/python/lib/python${PYTHON_VERSION}/site-packages")
   # Skip re-linking on CPACK / install.
@@ -1664,8 +1667,7 @@ elseif(WIN32)
   endif()
 elseif(APPLE)
   if(NOT WITH_PYTHON_MODULE)
-    # Uppercase name for app bundle.
-    set_target_properties(blender PROPERTIES OUTPUT_NAME Blender)
+    set_target_properties(blender PROPERTIES OUTPUT_NAME ${BLENDER_MACOS_APP_BUNDLE_NAME})
   endif()
 
   set(OSX_APP_SOURCEDIR ${CMAKE_SOURCE_DIR}/release/darwin/Blender.app)
@@ -1709,11 +1711,11 @@ elseif(APPLE)
   # Give the bundle actual creation/modification date.
   #
   # Note that the directory might not yet exist, which happens when CMAKE is first run.
-  if(NOT EXISTS ${EXECUTABLE_OUTPUT_PATH}/Blender.app)
-    file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/Blender.app)
+  if(NOT EXISTS ${EXECUTABLE_OUTPUT_PATH}/${BLENDER_MACOS_APP_BUNDLE})
+    file(MAKE_DIRECTORY ${EXECUTABLE_OUTPUT_PATH}/${BLENDER_MACOS_APP_BUNDLE})
   endif()
   execute_process(
-    COMMAND SetFile -d ${SETFILE_DATE} -m ${SETFILE_DATE} ${EXECUTABLE_OUTPUT_PATH}/Blender.app
+    COMMAND SetFile -d ${SETFILE_DATE} -m ${SETFILE_DATE} ${EXECUTABLE_OUTPUT_PATH}/${BLENDER_MACOS_APP_BUNDLE}
   )
 
   set(BLENDER_BIN "bin/blender")
@@ -1724,18 +1726,18 @@ elseif(APPLE)
 
   install(
     FILES ${OSX_APP_SOURCEDIR}/Contents/PkgInfo
-    DESTINATION "Blender.app/Contents"
+    DESTINATION "${BLENDER_MACOS_APP_BUNDLE}/Contents"
   )
 
   install_dir(
     ${OSX_APP_SOURCEDIR}/Contents/Resources
-    "Blender.app/Contents"
+    "${BLENDER_MACOS_APP_BUNDLE}/Contents"
   )
 
   if(WITH_BLENDER_THUMBNAILER)
     install(
       TARGETS blender-thumbnailer
-      DESTINATION "./Blender.app/Contents/PlugIns"
+      DESTINATION "./${BLENDER_MACOS_APP_BUNDLE}/Contents/PlugIns"
     )
   endif()
 
@@ -1794,7 +1796,7 @@ elseif(APPLE)
     unset(PYTHON_EXECUTABLE_NAME_ONLY)
     install(
       PROGRAMS ${CMAKE_BINARY_DIR}/release/darwin/scripts/blender-system-info.sh
-      DESTINATION "Blender.app/Contents/Resources"
+      DESTINATION "${BLENDER_MACOS_APP_BUNDLE}/Contents/Resources"
     )
   endif()
 

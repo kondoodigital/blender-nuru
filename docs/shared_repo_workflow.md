@@ -56,7 +56,7 @@ cmake --build builds/macos-dev --target bf_gpu bf_draw blender -j 12
 Launch path:
 
 ```sh
-builds/macos-dev/bin/Blender.app/Contents/MacOS/Blender
+builds/macos-dev/bin/Blender-Nuru.app/Contents/MacOS/Blender-Nuru
 ```
 
 Install runtime assets after `scripts/startup/*` edits:
