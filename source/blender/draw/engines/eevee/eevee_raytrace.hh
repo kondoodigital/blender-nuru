@@ -166,6 +166,7 @@ class RayTraceModule {
   draw::PassSimple trace_fallback_ps_ = {"Trace.Fallback"};
   draw::PassSimple trace_hardware_lighting_ps_ = {"Trace.HardwareLighting"};
   draw::PassSimple hardware_reflected_receiver_gi_blur_ps_ = {"Trace.HardwareReflectedReceiverGIBlur"};
+  draw::PassSimple hardware_layered_receiver_gi_blur_ps_ = {"Trace.HardwareLayeredReceiverGIBlur"};
   draw::PassSimple scene_final_specular_resolve_ps_ = {"Trace.SceneFinalSpecularResolve"};
   draw::PassSimple hardware_indirect_gi_cache_store_ps_ = {"Trace.HardwareIndirectGICacheStore"};
   draw::PassSimple hardware_fast_gi_update_ps_[3] = {{"Trace.HardwareFastGIUpdate0"},
@@ -329,6 +330,8 @@ class RayTraceModule {
   Texture hardware_indirect_gi_normal_cache_tx_ = {"hardware_indirect_gi_normal_cache_tx_"};
   Texture hardware_reflected_receiver_gi_tx_ = {"hardware_reflected_receiver_gi_tx_"};
   Texture hardware_reflected_receiver_gi_blur_tx_ = {"hardware_reflected_receiver_gi_blur_tx_"};
+  Texture hardware_layered_receiver_gi_tx_ = {"hardware_layered_receiver_gi_tx_"};
+  Texture hardware_layered_receiver_gi_blur_tx_ = {"hardware_layered_receiver_gi_blur_tx_"};
   Texture hardware_fast_gi_tx_ = {"hardware_fast_gi_tx_"};
   Texture hardware_fast_gi_error_tx_ = {"hardware_fast_gi_error_tx_"};
   Texture hardware_fast_gi_visibility_tx_ = {"hardware_fast_gi_visibility_tx_"};

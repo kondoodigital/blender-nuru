@@ -662,6 +662,13 @@ bool hardware_reflected_receiver_gi_load(int2 texel, float3 &radiance)
   return (gi.a > 0.5f) && (dot(radiance, radiance) > 1.0e-10f);
 }
 
+bool hardware_layered_receiver_gi_load(int2 texel, float3 &radiance)
+{
+  float4 gi = texelFetch(hardware_layered_receiver_gi_tx, texel, 0);
+  radiance = max(gi.rgb, float3(0.0f));
+  return (gi.a > 0.5f) && (dot(radiance, radiance) > 1.0e-10f);
+}
+
 /* Indirect/base-family simplification:
  * - proxy payloads keep at most one base-family lobe,
  * - subsurface collapses to diffuse,
@@ -1359,9 +1366,25 @@ float3 layered_receiver_hit_radiance_resolve(int2 texel, int2 texel_fullres, boo
                                            primary_is_diffuse_gi,
                                            specular_direct,
                                            specular_probe);
+  const bool scene_final_layered_diffuse_receiver =
+      (uniform_buf.raytrace.hardware_trace_phase == HWRT_TRACE_PHASE_SCENE_FINAL_SPECULAR) &&
+      ((base_cl.type == CLOSURE_BSDF_DIFFUSE_ID) || (base_cl.type == CLOSURE_BSSRDF_BURLEY_ID));
+  float3 layered_receiver_gi_radiance = float3(0.0f);
+  const bool scene_final_layered_receiver_gi =
+      scene_final_layered_diffuse_receiver &&
+      hardware_layered_receiver_gi_load(texel, layered_receiver_gi_radiance);
   radiance += base_direct + specular_direct;
-  if (primary_is_diffuse_gi ||
-      (uniform_buf.raytrace.hardware_trace_phase == HWRT_TRACE_PHASE_SCENE_FINAL_SPECULAR))
+  const bool add_probe_terms =
+      primary_is_diffuse_gi ||
+      (uniform_buf.raytrace.hardware_trace_phase == HWRT_TRACE_PHASE_SCENE_FINAL_SPECULAR);
+  if (scene_final_layered_receiver_gi) {
+    radiance += (layered_receiver_gi_radiance * max(base_cl.color, float3(0.0f))) /
+                max(uniform_buf.clamp.indirect_scale, 1.0e-4f);
+    if (add_probe_terms) {
+      radiance += specular_probe;
+    }
+  }
+  else if (add_probe_terms)
   {
     radiance += base_probe + specular_probe;
   }
@@ -2247,18 +2270,13 @@ void main()
         scene_final_specular_phase &&
         ((base_cl.type == CLOSURE_BSDF_DIFFUSE_ID) || (base_cl.type == CLOSURE_BSSRDF_BURLEY_ID));
     float3 visible_receiver_radiance = float3(0.0f);
-    const bool scene_final_visible_diffuse_receiver =
-        scene_final_diffuse_receiver && hardware_hit_raster_radiance_load(
-                                           texel,
-                                           P_hit,
-                                           N,
-                                           hit_prefers_back_radiance,
-                                           false,
-                                           visible_receiver_radiance);
+    /* Full RT scene-final mirrors must not reuse already-composed raster receiver color as
+     * secondary GI. That fallback reflects texture/direct-light structures and double-scaled GI
+     * into the mirror when the receiver-photon pass is missing a sample. */
+    const bool scene_final_visible_diffuse_receiver = false;
     float3 receiver_gi_radiance = float3(0.0f);
     const bool scene_final_receiver_gi =
         scene_final_diffuse_receiver && hardware_reflected_receiver_gi_load(texel, receiver_gi_radiance);
-
     if (!precombine_specular_caustics_phase) {
       const bool add_probe_terms = primary_is_diffuse_gi || scene_final_specular_phase;
       if (scene_final_receiver_gi) {

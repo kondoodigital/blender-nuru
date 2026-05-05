@@ -2462,6 +2462,42 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "  constexpr sampler linear_sampler(coord::normalized, address::clamp_to_edge, filter::linear);\n"
 "  return world_probe_tx.sample(linear_sampler, atlas_uv, uint(max(int(atlas_coord.w), 0)), level(0.0f)).xyz;\n"
 "}\n"
+"inline float3 reflected_receiver_gi_direction_unpack(float2 packed_dir)\n"
+"{\n"
+"  packed_dir = packed_dir * 2.0f - 1.0f;\n"
+"  float3 dir = float3(packed_dir.x, packed_dir.y, 1.0f - fabs(packed_dir.x) - fabs(packed_dir.y));\n"
+"  const float t = clamp(-dir.z, 0.0f, 1.0f);\n"
+"  dir.x += (dir.x >= 0.0f) ? -t : t;\n"
+"  dir.y += (dir.y >= 0.0f) ? -t : t;\n"
+"  const float len_sq = dot(dir, dir);\n"
+"  return (len_sq > 1.0e-10f) ? dir * rsqrt(len_sq) : float3(0.0f, 0.0f, 1.0f);\n"
+"}\n"
+"inline float3 reflected_receiver_gi_luma_clamp(float3 radiance, float max_luma)\n"
+"{\n"
+"  radiance = max(radiance, float3(0.0f));\n"
+"  const float luma = dot(radiance, float3(0.2126f, 0.7152f, 0.0722f));\n"
+"  if (luma > max_luma) {\n"
+"    radiance *= max_luma / max(luma, 1.0e-4f);\n"
+"  }\n"
+"  return radiance;\n"
+"}\n"
+"inline float3 reflected_receiver_gi_cone_direction(uint2 tid,\n"
+"                                                   int sample_index,\n"
+"                                                   float3 reflection_dir,\n"
+"                                                   float roughness,\n"
+"                                                   constant HardwareReflectedReceiverGIUniforms &u)\n"
+"{\n"
+"  const float cone_roughness = clamp(max(roughness, 0.18f), 0.0f, 0.75f);\n"
+"  float3 tangent = (fabs(reflection_dir.z) < 0.999f) ? normalize(cross(reflection_dir, float3(0.0f, 0.0f, 1.0f))) :\n"
+"                                                        float3(1.0f, 0.0f, 0.0f);\n"
+"  float3 bitangent = normalize(cross(tangent, reflection_dir));\n"
+"  const float2 r = float2(reflected_receiver_gi_hash(tid, sample_index, float2(0.21f, 0.79f), u),\n"
+"                         reflected_receiver_gi_hash(tid, sample_index, float2(0.57f, 0.33f), u));\n"
+"  const float phi = 6.28318530718f * r.x;\n"
+"  const float sin_theta = sqrt(max(0.0f, r.y)) * cone_roughness;\n"
+"  const float cos_theta = sqrt(max(0.0f, 1.0f - sin_theta * sin_theta));\n"
+"  return normalize(reflection_dir * cos_theta + tangent * (cos(phi) * sin_theta) + bitangent * (sin(phi) * sin_theta));\n"
+"}\n"
 "inline float3 sample_trace_world_radiance(texture2d_array<float, access::sample> world_probe_tx,\n"
 "                                          float3 direction,\n"
 "                                          constant HardwareTraceUniforms &u)\n"
@@ -3094,7 +3130,7 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "      preserved_output_throughput = throughput;\n"
 "      final_transparent_scene_final_hit = true;\n"
 "    }\n"
-"    if (scene_final_specular_phase && supports_hardware_reflection && !continuation_required && !preserved_material_scene_final && !preserve_transparent_scene_final && !preserve_scene_final_transmission_layer && (bounce == start_bounce) &&\n"
+"    if (scene_final_specular_phase && supports_hardware_reflection && !preserved_material_scene_final && !preserve_transparent_scene_final && !preserve_scene_final_transmission_layer && (bounce == start_bounce) &&\n"
 "        (resolved_proxy_closure == HWRT_CLOSURE_REFLECTION)) {\n"
 "      preserved_scene_final_reflective_hit = true;\n"
 "      preserved_position = final_position;\n"
@@ -3112,12 +3148,13 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "    }\n"
 "    /* The scene-final reflective early-out is only valid for the single-bounce shortcut. Once the\n"
 "     * user requests deeper reflection continuation, do not clamp the late path back to the first\n"
-"     * reflective secondary or nested sphere->floor reflections disappear again. */\n"
+"     * reflective secondary or nested glossy reflections disappear. */\n"
 "    if (scene_final_specular_phase && supports_hardware_reflection && !continuation_required && !preserved_material_scene_final && !preserve_transparent_scene_final && !preserve_scene_final_transmission_layer &&\n"
 "        (bounce == start_bounce) && (resolved_proxy_closure == HWRT_CLOSURE_REFLECTION)) {\n"
 "      break;\n"
 "    }\n"
-"    if ((preserved_layered_scene_final_hit || preserved_transparent_scene_final_hit) &&\n"
+"    if ((preserved_layered_scene_final_hit || preserved_scene_final_reflective_hit ||\n"
+"         preserved_transparent_scene_final_hit) &&\n"
 "        (bounce > start_bounce)) {\n"
 "      layered_receiver_valid = true;\n"
 "      layered_receiver_position = final_position;\n"
@@ -3155,9 +3192,10 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "    }\n"
 "    float3 next_direction = ray_direction;\n"
 "    if (continuation_proxy_closure == HWRT_CLOSURE_REFLECTION) {\n"
-"      throughput *= clamp(final_proxy.reflection_color_roughness.xyz,\n"
-"                           float3(0.0f),\n"
-"                           float3(uniforms.clamp_indirect));\n"
+"      const float3 reflection_tint = clamp(final_proxy.reflection_color_roughness.xyz,\n"
+"                                           float3(0.0f),\n"
+"                                           float3(uniforms.clamp_indirect));\n"
+"      throughput *= reflection_tint;\n"
 "      next_direction = sample_rough_specular_direction(\n"
 "          tid,\n"
 "          bounce + 1,\n"
@@ -3500,10 +3538,10 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "  if (preserved_transparent_scene_final_hit) {\n"
 "    final_output_throughput = preserved_output_throughput;\n"
 "  }\n"
-"  const bool scene_final_diffuse_receiver = scene_final_specular_phase && supports_hardware_reflection &&\n"
-"      (final_proxy_closure == HWRT_CLOSURE_DIFFUSE) &&\n"
-"      (dot(final_normal, final_normal) > 1.0e-10f) &&\n"
-"      (dot(final_output_throughput, final_output_throughput) > 1.0e-10f);\n"
+"  /* Reflected receiver Secondary GI is owned by eevee_hardware_trace_reflected_receiver_gi.\n"
+"   * Keep this scene-final trace responsible for exporting the hit payload only; otherwise the\n"
+"   * mirror receives the old inline continuation plus the new blurred receiver GI. */\n"
+"  const bool scene_final_diffuse_receiver = false;\n"
 "  if (scene_final_diffuse_receiver) {\n"
 "    const int diffuse_sample_count = 8;\n"
 "    const float3 diffuse_origin = final_position + final_normal * 2.0e-3f;\n"
@@ -3578,7 +3616,8 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "                                   apply_scene_final_throughput ? 1.0f : 0.0f),\n"
 "                           tid);\n"
 "  const uint identity_flags = final_front_facing |\n"
-"                              (final_layered_principled_scene_final_hit ? 2u : 0u) |\n"
+"                              ((final_layered_principled_scene_final_hit ||\n"
+"                                preserved_scene_final_reflective_hit) ? 2u : 0u) |\n"
 "                              (final_transparent_scene_final_hit ? 4u : 0u) |\n"
 "                              (final_refracted_textured_receiver_hit ? 16u : 0u);\n"
 "  hit_identity_img.write(uint4(final_user_id, final_primitive_id, identity_flags, 0xFFFFFFFFu), tid);\n"
@@ -4181,7 +4220,8 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "    texture2d<float, access::read> ray_time_img [[texture(2)]],\n"
 "    texture2d<float, access::read> hit_albedo_img [[texture(3)]],\n"
 "    texture2d<float, access::read> hit_normal_img [[texture(4)]],\n"
-"    texture2d<float, access::read> hit_world_position_img [[texture(5)]])\n"
+"    texture2d<float, access::read> hit_world_position_img [[texture(5)]],\n"
+"    texture2d<float, access::read> hit_material_img [[texture(6)]])\n"
 "{\n"
 "  const uint2 tile_coord = unpackUvec2x16(tiles_coord_buf[threadgroup_id.x]);\n"
 "  const uint2 tid = uint2(local_id.xy) + tile_coord * 8u;\n"
@@ -4203,6 +4243,9 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "  const float3 P = hit_world_position_img.read(tid).xyz;\n"
 "  float3 N = hit_normal_img.read(tid).xyz;\n"
 "  const float3 receiver_albedo = max(hit_albedo_img.read(tid).xyz, float3(0.0f));\n"
+"  const float4 hit_material = hit_material_img.read(tid);\n"
+"  const uint receiver_closure = uint(max(hit_material.z, 0.0f) + 0.5f);\n"
+"  const bool receiver_is_reflection = (receiver_closure == HWRT_CLOSURE_REFLECTION);\n"
 "  if (!all(isfinite(P)) || !all(isfinite(N)) || dot(N, N) < 1.0e-10f ||\n"
 "      max(receiver_albedo.x, max(receiver_albedo.y, receiver_albedo.z)) <= 1.0e-5f) {\n"
 "    receiver_gi_img.write(float4(0.0f), tid);\n"
@@ -4217,8 +4260,14 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "  i.assume_geometry_type(geometry_type::triangle);\n"
 "  i.force_opacity(forced_opacity::opaque);\n"
 "  float3 accum = float3(0.0f);\n"
+"  const float3 incoming_ray_dir = reflected_receiver_gi_direction_unpack(\n"
+"      float2(hit_material.w, hit_normal_img.read(tid).w));\n"
+"  const float3 reflection_dir = normalize(reflect(incoming_ray_dir, N));\n"
 "  for (int sample_index = 0; sample_index < sample_count; sample_index++) {\n"
-"    const float3 sample_dir = sample_reflected_receiver_gi_direction(tid, sample_index, N, uniforms);\n"
+"    const float3 sample_dir = receiver_is_reflection ?\n"
+"                                  reflected_receiver_gi_cone_direction(\n"
+"                                      tid, sample_index, reflection_dir, hit_material.x, uniforms) :\n"
+"                                  sample_reflected_receiver_gi_direction(tid, sample_index, N, uniforms);\n"
 "    const float3 origin = P + N * normal_bias;\n"
 "    intersection_result<triangle_data, instancing, max_levels<2>> intersection = i.intersect(\n"
 "        ray(origin, sample_dir, ray_tmin, ray_tmax), scene);\n"
@@ -4231,23 +4280,29 @@ static NSString *hardware_trace_shader_source() API_AVAILABLE(macos(14.0))
 "        const float3 hit_N = fast_gi_hit_normal(\n"
 "            user_id, intersection.primitive_id, sample_dir, triangle_normals, triangle_normal_ranges);\n"
 "        const float3 hit_P = origin + sample_dir * intersection.distance;\n"
-"        incoming += hit_albedo * sample_reflected_receiver_gi_direct_light(tid,\n"
+"        const float hit_luma = dot(hit_albedo, float3(0.2126f, 0.7152f, 0.0722f));\n"
+"        const float3 soft_hit_albedo = mix(hit_albedo, float3(hit_luma), 0.35f);\n"
+"        incoming += soft_hit_albedo * sample_reflected_receiver_gi_direct_light(tid,\n"
 "                                                                          sample_index,\n"
 "                                                                          sample_count,\n"
 "                                                                          hit_P,\n"
 "                                                                          hit_N,\n"
 "                                                                          receiver_gi_lights,\n"
-"                                                                          uniforms) * 0.75f;\n"
-"        incoming += hit_albedo * sample_reflected_receiver_gi_world_radiance(\n"
-"                                    world_probe_tx, hit_N, uniforms) * 0.35f;\n"
+"                                                                          uniforms) * (receiver_is_reflection ? 0.10f : 0.16f);\n"
+"        incoming += soft_hit_albedo * sample_reflected_receiver_gi_world_radiance(\n"
+"                                         world_probe_tx, hit_N, uniforms) * (receiver_is_reflection ? 0.05f : 0.07f);\n"
 "      }\n"
 "    }\n"
 "    else {\n"
-"      incoming = sample_reflected_receiver_gi_world_radiance(world_probe_tx, sample_dir, uniforms);\n"
+"      incoming = sample_reflected_receiver_gi_world_radiance(world_probe_tx, sample_dir, uniforms) *\n"
+"                 (receiver_is_reflection ? 0.10f : 0.16f);\n"
 "    }\n"
-"    accum += max(incoming, float3(0.0f));\n"
+"    accum += reflected_receiver_gi_luma_clamp(incoming, receiver_is_reflection ? 0.6f : 0.9f);\n"
 "  }\n"
-"  receiver_gi_img.write(float4(accum / float(sample_count), 1.0f), tid);\n"
+"  receiver_gi_img.write(float4(reflected_receiver_gi_luma_clamp(accum / float(sample_count),\n"
+"                                                                receiver_is_reflection ? 0.35f : 0.65f),\n"
+"                               1.0f),\n"
+"                        tid);\n"
 "}\n"
          "kernel void eevee_hardware_trace_local_shadow(\n"
          "    uint2 tid [[thread_position_in_grid]],\n"
@@ -5955,8 +6010,8 @@ bool raytrace_scene_trace_reflected_receiver_gi(
   if (scene == nullptr || scene->top_level_acceleration_structure == nil ||
       params.receiver_gi_tx == nullptr || params.dispatch_buf == nullptr ||
       params.tiles_coord_buf == nullptr || params.ray_time_tx == nullptr ||
-      params.hit_albedo_tx == nullptr || params.hit_normal_tx == nullptr ||
-      params.hit_world_position_tx == nullptr)
+      params.hit_albedo_tx == nullptr || params.hit_material_tx == nullptr ||
+      params.hit_normal_tx == nullptr || params.hit_world_position_tx == nullptr)
   {
     return false;
   }
@@ -5982,13 +6037,14 @@ bool raytrace_scene_trace_reflected_receiver_gi(
     MTLTexture *world_probe_tx = unwrap(params.world_probe_tx);
     MTLTexture *ray_time_tx = unwrap(params.ray_time_tx);
     MTLTexture *hit_albedo_tx = unwrap(params.hit_albedo_tx);
+    MTLTexture *hit_material_tx = unwrap(params.hit_material_tx);
     MTLTexture *hit_normal_tx = unwrap(params.hit_normal_tx);
     MTLTexture *hit_world_position_tx = unwrap(params.hit_world_position_tx);
     MTLStorageBuf *dispatch_ssbo = static_cast<MTLStorageBuf *>(params.dispatch_buf);
     MTLStorageBuf *tiles_coord_ssbo = static_cast<MTLStorageBuf *>(params.tiles_coord_buf);
     if (receiver_gi_tx == nullptr || ray_time_tx == nullptr || hit_albedo_tx == nullptr ||
-        hit_normal_tx == nullptr || hit_world_position_tx == nullptr || dispatch_ssbo == nullptr ||
-        tiles_coord_ssbo == nullptr)
+        hit_material_tx == nullptr || hit_normal_tx == nullptr ||
+        hit_world_position_tx == nullptr || dispatch_ssbo == nullptr || tiles_coord_ssbo == nullptr)
     {
       return false;
     }
@@ -6046,10 +6102,11 @@ bool raytrace_scene_trace_reflected_receiver_gi(
     id<MTLTexture> world_probe_handle = world_probe_tx ? world_probe_tx->get_metal_handle() : nil;
     id<MTLTexture> ray_time_handle = ray_time_tx->get_metal_handle();
     id<MTLTexture> hit_albedo_handle = hit_albedo_tx->get_metal_handle();
+    id<MTLTexture> hit_material_handle = hit_material_tx->get_metal_handle();
     id<MTLTexture> hit_normal_handle = hit_normal_tx->get_metal_handle();
     id<MTLTexture> hit_world_position_handle = hit_world_position_tx->get_metal_handle();
     if (receiver_gi_handle == nil || ray_time_handle == nil || hit_albedo_handle == nil ||
-        hit_normal_handle == nil || hit_world_position_handle == nil)
+        hit_material_handle == nil || hit_normal_handle == nil || hit_world_position_handle == nil)
     {
       [encoder endEncoding];
       return false;
@@ -6060,6 +6117,7 @@ bool raytrace_scene_trace_reflected_receiver_gi(
     [encoder setTexture:hit_albedo_handle atIndex:3];
     [encoder setTexture:hit_normal_handle atIndex:4];
     [encoder setTexture:hit_world_position_handle atIndex:5];
+    [encoder setTexture:hit_material_handle atIndex:6];
 
     const MTLSize group_size = MTLSizeMake(8, 8, 1);
     [encoder dispatchThreadgroupsWithIndirectBuffer:dispatch_buf_handle

@@ -269,6 +269,7 @@ struct GPUMetalRaytraceReflectedReceiverGIParams {
   gpu::StorageBuf *tiles_coord_buf = nullptr;
   gpu::Texture *ray_time_tx = nullptr;
   gpu::Texture *hit_albedo_tx = nullptr;
+  gpu::Texture *hit_material_tx = nullptr;
   gpu::Texture *hit_normal_tx = nullptr;
   gpu::Texture *hit_world_position_tx = nullptr;
   int2 tracing_resolution = int2(1);

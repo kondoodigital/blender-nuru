@@ -1305,11 +1305,17 @@ void RayTraceModule::init()
       gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
   hardware_reflected_receiver_gi_blur_tx_.ensure_2d(
       gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
+  hardware_layered_receiver_gi_tx_.ensure_2d(
+      gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
+  hardware_layered_receiver_gi_blur_tx_.ensure_2d(
+      gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
   GPU_texture_clear(hardware_indirect_gi_radiance_cache_tx_, GPU_DATA_FLOAT, &zero);
   GPU_texture_clear(hardware_indirect_gi_position_cache_tx_, GPU_DATA_FLOAT, &zero);
   GPU_texture_clear(hardware_indirect_gi_normal_cache_tx_, GPU_DATA_FLOAT, &zero);
   GPU_texture_clear(hardware_reflected_receiver_gi_tx_, GPU_DATA_FLOAT, &zero);
   GPU_texture_clear(hardware_reflected_receiver_gi_blur_tx_, GPU_DATA_FLOAT, &zero);
+  GPU_texture_clear(hardware_layered_receiver_gi_tx_, GPU_DATA_FLOAT, &zero);
+  GPU_texture_clear(hardware_layered_receiver_gi_blur_tx_, GPU_DATA_FLOAT, &zero);
   if (!hardware_fast_gi_tx_.is_valid()) {
     hardware_fast_gi_tx_.ensure_3d(gpu::TextureFormat::SFLOAT_16_16_16_16,
                                    int3(1),
@@ -1395,6 +1401,7 @@ void RayTraceModule::warm_hardware_tracing_backend()
   }
   inst_.manager->warm_shader_specialization(trace_hardware_lighting_ps_);
   inst_.manager->warm_shader_specialization(hardware_reflected_receiver_gi_blur_ps_);
+  inst_.manager->warm_shader_specialization(hardware_layered_receiver_gi_blur_ps_);
   inst_.manager->warm_shader_specialization(hardware_indirect_gi_cache_store_ps_);
   inst_.manager->warm_shader_specialization(scene_final_specular_resolve_ps_);
 }
@@ -3165,6 +3172,8 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
   layered_receiver_barycentric_tx_.clear(float4(0.0f));
   hardware_reflected_receiver_gi_tx_.clear(float4(0.0f));
   hardware_reflected_receiver_gi_blur_tx_.clear(float4(0.0f));
+  hardware_layered_receiver_gi_tx_.clear(float4(0.0f));
+  hardware_layered_receiver_gi_blur_tx_.clear(float4(0.0f));
   transmission_receiver_ray_time_tx_.clear(float4(0.0f));
   transmission_receiver_ray_radiance_tx_.clear(float4(0.0f));
   transmission_receiver_albedo_tx_.clear(float4(0.0f));
@@ -3829,6 +3838,7 @@ void RayTraceModule::sync()
     pass.bind_texture("hardware_indirect_gi_normal_cache_tx",
                       &hardware_indirect_gi_normal_cache_tx_);
     pass.bind_texture("hardware_reflected_receiver_gi_tx", &hardware_reflected_receiver_gi_blur_tx_);
+    pass.bind_texture("hardware_layered_receiver_gi_tx", &hardware_layered_receiver_gi_blur_tx_);
     pass.bind_texture("hardware_fast_gi_tx", &hardware_fast_gi_tx_, fast_gi_field_sampler);
     pass.bind_texture(
         "hardware_fast_gi_visibility_tx", &hardware_fast_gi_visibility_tx_, fast_gi_field_sampler);
@@ -3860,7 +3870,24 @@ void RayTraceModule::sync()
     pass.bind_texture("hit_normal_tx", &hit_normal_tx_);
     pass.bind_texture("hit_world_position_tx", &hit_world_position_tx_);
     pass.bind_texture("ray_time_tx", &ray_time_tx_);
+    pass.bind_texture("hit_identity_tx", &hit_identity_tx_);
     pass.bind_image("out_reflected_receiver_gi_img", &hardware_reflected_receiver_gi_blur_tx_);
+    pass.bind_ssbo("tiles_coord_buf", &hardware_resolve_tiles_buf_);
+    pass.push_constant("reflected_receiver_gi_resolution_divisor",
+                       &hardware_reflected_receiver_gi_resolution_divisor_);
+    pass.dispatch(hardware_resolve_dispatch_buf_);
+    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_TEXTURE_FETCH);
+  }
+  {
+    PassSimple &pass = hardware_layered_receiver_gi_blur_ps_;
+    pass.init();
+    pass.shader_set(inst_.shaders.static_shader_get(RAY_HARDWARE_REFLECTED_RECEIVER_GI_BLUR));
+    pass.bind_texture("reflected_receiver_gi_tx", &hardware_layered_receiver_gi_tx_);
+    pass.bind_texture("hit_normal_tx", &layered_receiver_normal_tx_);
+    pass.bind_texture("hit_world_position_tx", &layered_receiver_world_position_tx_);
+    pass.bind_texture("ray_time_tx", &layered_receiver_ray_time_tx_);
+    pass.bind_texture("hit_identity_tx", &layered_receiver_identity_tx_);
+    pass.bind_image("out_reflected_receiver_gi_img", &hardware_layered_receiver_gi_blur_tx_);
     pass.bind_ssbo("tiles_coord_buf", &hardware_resolve_tiles_buf_);
     pass.push_constant("reflected_receiver_gi_resolution_divisor",
                        &hardware_reflected_receiver_gi_resolution_divisor_);
@@ -4563,6 +4590,7 @@ void RayTraceModule::render_reflected_receiver_gi(GPUMetalRaytraceScene *metal_s
   params.tiles_coord_buf = hardware_resolve_tiles_buf_;
   params.ray_time_tx = ray_time_tx_;
   params.hit_albedo_tx = hit_albedo_tx_;
+  params.hit_material_tx = hit_material_tx_;
   params.hit_normal_tx = hit_normal_tx_;
   params.hit_world_position_tx = hit_world_position_tx_;
   params.tracing_resolution = tracing_extent;
@@ -4592,6 +4620,19 @@ void RayTraceModule::render_reflected_receiver_gi(GPUMetalRaytraceScene *metal_s
 
   GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
   inst_.manager->submit(hardware_reflected_receiver_gi_blur_ps_);
+
+  params.receiver_gi_tx = hardware_layered_receiver_gi_tx_;
+  params.ray_time_tx = layered_receiver_ray_time_tx_;
+  params.hit_albedo_tx = layered_receiver_albedo_tx_;
+  params.hit_material_tx = layered_receiver_material_tx_;
+  params.hit_normal_tx = layered_receiver_normal_tx_;
+  params.hit_world_position_tx = layered_receiver_world_position_tx_;
+  if (!GPU_metal_raytrace_scene_trace_reflected_receiver_gi(metal_scene, params)) {
+    return;
+  }
+
+  GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  inst_.manager->submit(hardware_layered_receiver_gi_blur_ps_);
 }
 
 void RayTraceModule::render_hardware_indirect_gi_cache(View &main_view)
@@ -4952,6 +4993,10 @@ RayTraceResultTexture RayTraceModule::trace(
     hardware_reflected_receiver_gi_tx_.ensure_2d(
         gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
     hardware_reflected_receiver_gi_blur_tx_.ensure_2d(
+        gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
+    hardware_layered_receiver_gi_tx_.ensure_2d(
+        gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
+    hardware_layered_receiver_gi_blur_tx_.ensure_2d(
         gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
     transmission_receiver_ray_time_tx_.acquire(
         tracing_res, gpu::TextureFormat::RAYTRACE_RAYTIME_FORMAT, usage_rw);

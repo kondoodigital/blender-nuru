@@ -31,6 +31,7 @@ void main()
     return;
   }
   center_N = normalize(center_N);
+  uint center_object_id = texelFetch(hit_identity_tx, texel, 0).w;
 
   int divisor = max(reflected_receiver_gi_resolution_divisor, 1);
   float2 grid_coord = (float2(texel) - float(divisor) * 0.5f) / float(divisor);
@@ -54,9 +55,15 @@ void main()
         continue;
       }
       sample_N = normalize(sample_N);
+      uint sample_object_id = texelFetch(hit_identity_tx, sample_texel, 0).w;
+      if (center_object_id != 0xFFFFFFFFu && sample_object_id != 0xFFFFFFFFu &&
+          center_object_id != sample_object_id)
+      {
+        continue;
+      }
 
-      float normal_weight = smoothstep(0.35f, 0.9f, dot(center_N, sample_N));
-      float distance_weight = exp2(-length(sample_P - center_P) * 0.75f);
+      float normal_weight = smoothstep(0.55f, 0.95f, dot(center_N, sample_N));
+      float distance_weight = exp2(-length(sample_P - center_P) * 1.5f);
       float2 texel_delta = (float2(sample_texel) - float2(texel)) / float(divisor);
       float spatial_weight = exp2(-dot(texel_delta, texel_delta) * 0.45f);
       float weight = normal_weight * distance_weight * spatial_weight;
