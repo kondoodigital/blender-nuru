@@ -1751,6 +1751,7 @@ void RayTraceModule::invalidate_viewport_hardware_visibility_cache()
   hardware_primary_shadow_visibility_depth_tx_ = nullptr;
   hardware_primary_shadow_visibility_normal_tx_ = nullptr;
   hardware_primary_shadow_visibility_extent_ = int2(0);
+  hardware_primary_shadow_visibility_sample_index_ = 0;
   hardware_primary_shadow_direct_enabled_ = false;
   hardware_primary_shadow_world_enabled_ = false;
 }
@@ -2596,6 +2597,7 @@ void RayTraceModule::render_directional_shadow_visibility(View &render_view,
     hardware_primary_shadow_visibility_depth_tx_ = depth_tx;
     hardware_primary_shadow_visibility_normal_tx_ = gbuf_normal_tx;
     hardware_primary_shadow_visibility_extent_ = extent;
+    hardware_primary_shadow_visibility_sample_index_ = inst_.sampling.sample_index();
     hardware_primary_shadow_direct_enabled_ = use_direct_rt_shadows;
     hardware_primary_shadow_world_enabled_ = use_world_rt_shadows;
   };
@@ -2604,6 +2606,8 @@ void RayTraceModule::render_directional_shadow_visibility(View &render_view,
                                        hardware_primary_shadow_visibility_normal_tx_ ==
                                            gbuf_normal_tx &&
                                        hardware_primary_shadow_visibility_extent_ == extent &&
+                                       hardware_primary_shadow_visibility_sample_index_ ==
+                                           inst_.sampling.sample_index() &&
                                        hardware_primary_shadow_direct_enabled_ ==
                                            use_direct_rt_shadows &&
                                        hardware_primary_shadow_world_enabled_ ==

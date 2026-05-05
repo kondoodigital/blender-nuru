@@ -425,6 +425,7 @@ class RayTraceModule {
   gpu::Texture *hardware_primary_shadow_visibility_depth_tx_ = nullptr;
   gpu::Texture *hardware_primary_shadow_visibility_normal_tx_ = nullptr;
   int2 hardware_primary_shadow_visibility_extent_ = int2(0);
+  uint64_t hardware_primary_shadow_visibility_sample_index_ = 0;
   bool hardware_primary_shadow_direct_enabled_ = false;
   bool hardware_primary_shadow_world_enabled_ = false;
 
