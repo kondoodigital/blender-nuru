@@ -214,7 +214,10 @@ static GPUMetalRaytraceFastGILightRecord hardware_fast_gi_light_record_from_ligh
   record.object_to_world_y = light.object_to_world.y;
   record.object_to_world_z = light.object_to_world.z;
   record.color_diffuse_power = float4(
-      std::abs(light.color.x), std::abs(light.color.y), std::abs(light.color.z), light.power[LIGHT_VOLUME]);
+      std::abs(light.color.x),
+      std::abs(light.color.y),
+      std::abs(light.color.z),
+      light.power[LIGHT_DIFFUSE]);
   record.direction_type = float4(0.0f, 0.0f, 1.0f, float(light.type));
   if (is_sun_light(light.type)) {
     record.direction_type = float4(light.sun().direction, float(light.type));
@@ -2392,7 +2395,7 @@ void RayTraceModule::update_hardware_fast_gi_field(View &render_view,
           fast_gi_params.normal_bias = max_ff(
               target_cascade_config[cascade_index].w * 0.05f, 1.0e-3f);
           fast_gi_params.reuse_history = candidate.reuse_compatible;
-          fast_gi_params.use_environment = use_hardware_gi() || use_hardware_environment();
+          fast_gi_params.use_environment = use_hardware_environment();
           fast_gi_params.sampling_rand = sampling_rand;
           fast_gi_params.world_probe_atlas_coord = float4(world_probe_atlas_coord.offset.x,
                                                           world_probe_atlas_coord.offset.y,
@@ -3263,7 +3266,7 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
                                                   world_probe_atlas_coord.offset.y,
                                                   world_probe_atlas_coord.scale,
                                                   world_probe_atlas_coord.layer);
-    trace_params.use_environment = use_hardware_gi() || use_hardware_environment();
+    trace_params.use_environment = use_hardware_environment();
     const float3 raytrace_rng = inst_.sampling.rng_3d_get(eSamplingDimension::SAMPLING_RAYTRACE_U);
     trace_params.sampling_rand = float4(
         raytrace_rng.x,
@@ -4607,7 +4610,7 @@ void RayTraceModule::render_reflected_receiver_gi(GPUMetalRaytraceScene *metal_s
                                      hardware_fast_gi_direct_light_sample_count(
                                          light_count, inst_.is_viewport(), hardware_fast_gi_quality_tier_));
   params.normal_bias = 1.0e-3f;
-  params.use_environment = use_hardware_gi() || use_hardware_environment();
+  params.use_environment = use_hardware_environment();
   const float3 raytrace_rng = inst_.sampling.rng_3d_get(eSamplingDimension::SAMPLING_RAYTRACE_U);
   params.sampling_rand = float4(
       raytrace_rng.x,

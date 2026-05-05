@@ -1030,7 +1030,7 @@ bool hardware_hit_allows_raster_reuse(int2 texel,
 bool hardware_hit_closure_uses_environment_visibility(ClosureUndetermined cl,
                                                       bool primary_is_diffuse_gi)
 {
-  if (!use_hardware_rt_environment_visibility || primary_is_diffuse_gi) {
+  if (!use_hardware_rt_environment_visibility) {
     return false;
   }
   return true;
@@ -1148,8 +1148,7 @@ void hardware_hit_closure_light_terms(int2 texel_fullres,
                                     is_diffuse_family &&
                                     probe_uses_world &&
                                     (primary_is_diffuse_gi || !use_hardware_environment);
-  if (!use_hardware_environment && probe_uses_world && !primary_is_diffuse_gi &&
-      !scene_final_reflected_diffuse)
+  if (!use_hardware_environment && probe_uses_world)
   {
     probe_light = float3(0.0f);
   }
@@ -1304,8 +1303,7 @@ void layered_receiver_hit_closure_light_terms(int2 texel_fullres,
                                     is_diffuse_family &&
                                     lightprobe_uses_world(samp) &&
                                     (primary_is_diffuse_gi || !use_hardware_environment);
-  if (!use_hardware_environment && lightprobe_uses_world(samp) && !primary_is_diffuse_gi &&
-      !scene_final_reflected_diffuse)
+  if (!use_hardware_environment && lightprobe_uses_world(samp))
   {
     probe_light = float3(0.0f);
   }
@@ -1659,8 +1657,7 @@ void transmission_receiver_hit_closure_light_terms(int2 texel_fullres,
                                     is_diffuse_family &&
                                     lightprobe_uses_world(samp) &&
                                     (primary_is_diffuse_gi || !use_hardware_environment);
-  if (!use_hardware_environment && lightprobe_uses_world(samp) && !primary_is_diffuse_gi &&
-      !scene_final_reflected_diffuse)
+  if (!use_hardware_environment && lightprobe_uses_world(samp))
   {
     probe_light = float3(0.0f);
   }
