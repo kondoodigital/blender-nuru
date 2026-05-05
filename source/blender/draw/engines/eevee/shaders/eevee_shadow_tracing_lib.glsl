@@ -549,16 +549,29 @@ float shadow_eval_dispatch(uint l_idx,
   const bool shadow_dispatch_can_use_hardware_rt = true;
 #endif
 
+#if defined(SHADOW_DISPATCH_FORCE_UNSHADOWED)
+  if (SHADOW_DISPATCH_FORCE_UNSHADOWED) {
+    return 1.0f;
+  }
+#endif
+
 #if defined(SHADOW_DISPATCH_HAS_HARDWARE_RT)
+#  if !defined(SHADOW_DISPATCH_HARDWARE_VISIBILITY_FETCH)
+#    define SHADOW_DISPATCH_HARDWARE_VISIBILITY_FETCH(_texel, _layer) \
+      texelFetch(hardware_rt_shadow_visibility_tx, int3((_texel), (_layer)), 0).r
+#  endif
+#  if !defined(SHADOW_DISPATCH_ALLOW_TRANSMISSION_HARDWARE_RT)
+#    define SHADOW_DISPATCH_ALLOW_TRANSMISSION_HARDWARE_RT false
+#  endif
   const bool use_world_hardware_rt = use_hardware_rt_environment_visibility && light_is_world_sun(l_idx);
   if (shadow_dispatch_can_use_hardware_rt &&
-      (use_hardware_rt_shadows || use_world_hardware_rt) && !is_transmission &&
+      (use_hardware_rt_shadows || use_world_hardware_rt) &&
+      (!is_transmission || SHADOW_DISPATCH_ALLOW_TRANSMISSION_HARDWARE_RT) &&
       !is_translucent_with_thickness &&
       (light.tilemap_index != LIGHT_NO_SHADOW || use_world_hardware_rt))
   {
     const int shadow_layer = int(l_idx);
-    return texelFetch(hardware_rt_shadow_visibility_tx, int3(shadow_dispatch_texel, shadow_layer), 0)
-        .r;
+    return SHADOW_DISPATCH_HARDWARE_VISIBILITY_FETCH(shadow_dispatch_texel, shadow_layer);
   }
 #endif
 

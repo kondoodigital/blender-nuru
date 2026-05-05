@@ -167,6 +167,8 @@ class RayTraceModule {
   draw::PassSimple trace_hardware_lighting_ps_ = {"Trace.HardwareLighting"};
   draw::PassSimple hardware_reflected_receiver_gi_blur_ps_ = {"Trace.HardwareReflectedReceiverGIBlur"};
   draw::PassSimple hardware_layered_receiver_gi_blur_ps_ = {"Trace.HardwareLayeredReceiverGIBlur"};
+  draw::PassSimple hardware_transmission_receiver_gi_blur_ps_ = {
+      "Trace.HardwareTransmissionReceiverGIBlur"};
   draw::PassSimple scene_final_specular_resolve_ps_ = {"Trace.SceneFinalSpecularResolve"};
   draw::PassSimple hardware_indirect_gi_cache_store_ps_ = {"Trace.HardwareIndirectGICacheStore"};
   draw::PassSimple hardware_fast_gi_update_ps_[3] = {{"Trace.HardwareFastGIUpdate0"},
@@ -321,6 +323,10 @@ class RayTraceModule {
   Texture hardware_direct_light_depth_tx_ = {"hardware_direct_light_depth_tx_"};
   Texture hardware_direct_light_tilemask_tx_ = {"hardware_direct_light_tilemask_tx_"};
   Texture hardware_secondary_shadow_visibility_tx_ = {"hardware_secondary_shadow_visibility_tx_"};
+  Texture hardware_layered_receiver_shadow_visibility_tx_ = {
+      "hardware_layered_receiver_shadow_visibility_tx_"};
+  Texture hardware_transmission_receiver_shadow_visibility_tx_ = {
+      "hardware_transmission_receiver_shadow_visibility_tx_"};
   Texture hardware_secondary_environment_visibility_tx_ = {
       "hardware_secondary_environment_visibility_tx_"};
   Texture hardware_environment_visibility_tx_ = {"hardware_environment_visibility_tx_"};
@@ -332,6 +338,9 @@ class RayTraceModule {
   Texture hardware_reflected_receiver_gi_blur_tx_ = {"hardware_reflected_receiver_gi_blur_tx_"};
   Texture hardware_layered_receiver_gi_tx_ = {"hardware_layered_receiver_gi_tx_"};
   Texture hardware_layered_receiver_gi_blur_tx_ = {"hardware_layered_receiver_gi_blur_tx_"};
+  Texture hardware_transmission_receiver_gi_tx_ = {"hardware_transmission_receiver_gi_tx_"};
+  Texture hardware_transmission_receiver_gi_blur_tx_ = {
+      "hardware_transmission_receiver_gi_blur_tx_"};
   Texture hardware_fast_gi_tx_ = {"hardware_fast_gi_tx_"};
   Texture hardware_fast_gi_error_tx_ = {"hardware_fast_gi_error_tx_"};
   Texture hardware_fast_gi_visibility_tx_ = {"hardware_fast_gi_visibility_tx_"};
@@ -506,6 +515,12 @@ class RayTraceModule {
   void render_secondary_environment_visibility(GPUMetalRaytraceScene *metal_scene,
                                                int2 tracing_extent);
   void render_secondary_shadow_visibility(GPUMetalRaytraceScene *metal_scene, int2 tracing_extent);
+  void render_hit_shadow_visibility(GPUMetalRaytraceScene *metal_scene,
+                                    int2 tracing_extent,
+                                    gpu::Texture *hit_normal_tx,
+                                    gpu::Texture *hit_world_position_tx,
+                                    gpu::Texture *hit_identity_tx,
+                                    Texture &shadow_visibility_tx);
   void render_reflected_receiver_gi(GPUMetalRaytraceScene *metal_scene, int2 tracing_extent);
   void render_hardware_indirect_gi_cache(View &main_view);
   void update_hardware_fast_gi_field(

@@ -25,6 +25,33 @@ COMPUTE_SHADER_CREATE_INFO(eevee_ray_trace_hardware_lighting)
 #include "eevee_hardware_environment_visibility_lib.glsl"
 int2 shadow_dispatch_texel_fullres = int2(0);
 bool shadow_dispatch_use_hardware_rt = false;
+bool shadow_dispatch_allow_transmission_hardware_rt = false;
+bool shadow_dispatch_force_unshadowed = false;
+#define HWRT_SHADOW_VISIBILITY_MAIN_HIT 0
+#define HWRT_SHADOW_VISIBILITY_LAYERED_RECEIVER 1
+#define HWRT_SHADOW_VISIBILITY_TRANSMISSION_RECEIVER 2
+int shadow_dispatch_visibility_source = HWRT_SHADOW_VISIBILITY_MAIN_HIT;
+
+float hardware_rt_shadow_visibility_fetch(int2 texel, int layer)
+{
+  if (shadow_dispatch_visibility_source == HWRT_SHADOW_VISIBILITY_LAYERED_RECEIVER) {
+    return texelFetch(
+               hardware_layered_receiver_rt_shadow_visibility_tx, int3(texel, layer), 0)
+        .r;
+  }
+  if (shadow_dispatch_visibility_source == HWRT_SHADOW_VISIBILITY_TRANSMISSION_RECEIVER) {
+    return texelFetch(
+               hardware_transmission_receiver_rt_shadow_visibility_tx, int3(texel, layer), 0)
+        .r;
+  }
+  return texelFetch(hardware_rt_shadow_visibility_tx, int3(texel, layer), 0).r;
+}
+
+#define SHADOW_DISPATCH_HARDWARE_VISIBILITY_FETCH(_texel, _layer) \
+  hardware_rt_shadow_visibility_fetch((_texel), (_layer))
+#define SHADOW_DISPATCH_ALLOW_TRANSMISSION_HARDWARE_RT \
+  shadow_dispatch_allow_transmission_hardware_rt
+#define SHADOW_DISPATCH_FORCE_UNSHADOWED shadow_dispatch_force_unshadowed
 #include "eevee_light_eval_lib.glsl"
 #include "eevee_lightprobe_eval_lib.glsl"
 #include "eevee_sampling_lib.glsl"
@@ -112,7 +139,8 @@ bool hardware_primary_surface_has_full_rt_specular(int2 texel_fullres)
   const uchar closure_count = gbuf.header.closure_len();
   for (uchar i = 0; i < GBUFFER_LAYER_MAX && i < closure_count; i++) {
     const ClosureUndetermined cl = gbuf.layer_get(i);
-    if (hardware_hit_closure_is_specular_family(cl.type) &&
+    if (((cl.type == CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID) ||
+         (cl.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID)) &&
         (hardware_hit_specular_mode(cl) == RAYTRACE_SPECULAR_MODE_FULL_RT))
     {
       return true;
@@ -545,6 +573,31 @@ bool hardware_hit_raster_radiance_load(int2 texel,
   return true;
 }
 
+bool hardware_hit_visible_direct_light_load(int2 texel,
+                                            float3 P_hit,
+                                            float3 N_hit,
+                                            bool allow_opposite_normals,
+                                            float3 &radiance)
+{
+  radiance = float3(0.0f);
+
+  float2 lookup_uv;
+  int2 lookup_texel;
+  if (!hardware_hit_visible_surface_lookup_texel_load(
+          texel, P_hit, N_hit, allow_opposite_normals, lookup_uv, lookup_texel))
+  {
+    return false;
+  }
+
+  const int2 direct_extent = textureSize(hardware_direct_light_tx, 0);
+  if (any(lessThan(lookup_texel, int2(0))) || any(greaterThanEqual(lookup_texel, direct_extent))) {
+    return false;
+  }
+
+  radiance = texelFetch(hardware_direct_light_tx, lookup_texel, 0).rgb;
+  return dot(radiance, radiance) > 1.0e-10f;
+}
+
 bool hardware_hit_raster_back_radiance_load(int2 texel,
                                             float3 P_hit,
                                             float3 N_hit,
@@ -665,6 +718,13 @@ bool hardware_reflected_receiver_gi_load(int2 texel, float3 &radiance)
 bool hardware_layered_receiver_gi_load(int2 texel, float3 &radiance)
 {
   float4 gi = texelFetch(hardware_layered_receiver_gi_tx, texel, 0);
+  radiance = max(gi.rgb, float3(0.0f));
+  return (gi.a > 0.5f) && (dot(radiance, radiance) > 1.0e-10f);
+}
+
+bool hardware_transmission_receiver_gi_load(int2 texel, float3 &radiance)
+{
+  float4 gi = texelFetch(hardware_transmission_receiver_gi_tx, texel, 0);
   radiance = max(gi.rgb, float3(0.0f));
   return (gi.a > 0.5f) && (dot(radiance, radiance) > 1.0e-10f);
 }
@@ -890,6 +950,7 @@ ClosureUndetermined layered_receiver_hit_specular_closure_load(int2 texel, float
   switch (cl.type) {
     case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
       cl.data.x = hit_material.x;
+      cl.data.y = hit_material.y;
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
       cl.data.x = hit_material.x;
@@ -1080,9 +1141,13 @@ void hardware_hit_closure_light_terms(int2 texel_fullres,
     geometry_offset = object_infos.shadow_terminator_geometry_offset;
   }
   shadow_dispatch_texel_fullres = texel;
+  shadow_dispatch_visibility_source = HWRT_SHADOW_VISIBILITY_MAIN_HIT;
+  shadow_dispatch_allow_transmission_hardware_rt = false;
+  shadow_dispatch_force_unshadowed = primary_is_diffuse_gi;
   shadow_dispatch_use_hardware_rt = false;
-  if ((use_hardware_rt_shadows || use_hardware_rt_environment_visibility) &&
-      !direct_lit_refracted_textured_receiver)
+  if (!primary_is_diffuse_gi &&
+      (use_hardware_rt_shadows ||
+       (use_hardware_rt_environment_visibility && !direct_lit_refracted_textured_receiver)))
   {
     shadow_dispatch_use_hardware_rt = hardware_hit_shadow_payload_valid(texel);
   }
@@ -1144,11 +1209,20 @@ void hardware_hit_closure_light_terms(int2 texel_fullres,
   LightProbeSample samp = lightprobe_load(float2(texel_fullres), P_hit, N, V);
   probe_uses_world = lightprobe_uses_world(samp);
   float3 probe_light = lightprobe_eval(samp, cl, P_hit, V, cl_thickness);
+  const bool diffuse_gi_world_probe = primary_is_diffuse_gi && is_diffuse_family &&
+                                      probe_uses_world;
   const bool use_dome_world_probe = hardware_fast_gi_enabled_for_diffuse() &&
                                     is_diffuse_family &&
                                     probe_uses_world &&
                                     (primary_is_diffuse_gi || !use_hardware_environment);
-  if (!use_hardware_environment && probe_uses_world)
+  if (diffuse_gi_world_probe) {
+    /* Primary diffuse GI should transport surface lighting from the hit, not turn occluded RT
+     * shadows into a world-probe fill. Keep world transport owned by primary environment visibility
+     * and specular paths so colored wall bounce can dominate the shadow. */
+    probe_light = float3(0.0f);
+    probe_uses_world = false;
+  }
+  else if (!use_hardware_environment && probe_uses_world)
   {
     probe_light = float3(0.0f);
   }
@@ -1236,9 +1310,13 @@ void layered_receiver_hit_closure_light_terms(int2 texel_fullres,
     geometry_offset = object_infos.shadow_terminator_geometry_offset;
   }
   shadow_dispatch_texel_fullres = texel;
+  shadow_dispatch_visibility_source = HWRT_SHADOW_VISIBILITY_LAYERED_RECEIVER;
+  shadow_dispatch_allow_transmission_hardware_rt = true;
+  shadow_dispatch_force_unshadowed = primary_is_diffuse_gi;
   shadow_dispatch_use_hardware_rt = false;
-  if ((use_hardware_rt_shadows || use_hardware_rt_environment_visibility) &&
-      !direct_lit_refracted_textured_receiver)
+  if (!primary_is_diffuse_gi &&
+      (use_hardware_rt_shadows ||
+       (use_hardware_rt_environment_visibility && !direct_lit_refracted_textured_receiver)))
   {
     shadow_dispatch_use_hardware_rt = layered_receiver_hit_shadow_payload_valid(texel);
   }
@@ -1298,17 +1376,23 @@ void layered_receiver_hit_closure_light_terms(int2 texel_fullres,
   }
 
   LightProbeSample samp = lightprobe_load(float2(texel_fullres), P_hit, N, V);
+  const bool probe_uses_world = lightprobe_uses_world(samp);
   float3 probe_light = lightprobe_eval(samp, cl, P_hit, V, cl_thickness);
+  const bool diffuse_gi_world_probe = primary_is_diffuse_gi && is_diffuse_family &&
+                                      probe_uses_world;
   const bool use_dome_world_probe = hardware_fast_gi_enabled_for_diffuse() &&
                                     is_diffuse_family &&
-                                    lightprobe_uses_world(samp) &&
+                                    probe_uses_world &&
                                     (primary_is_diffuse_gi || !use_hardware_environment);
-  if (!use_hardware_environment && lightprobe_uses_world(samp))
+  if (diffuse_gi_world_probe) {
+    probe_light = float3(0.0f);
+  }
+  else if (!use_hardware_environment && probe_uses_world)
   {
     probe_light = float3(0.0f);
   }
   else if (hardware_hit_closure_uses_environment_visibility(cl, primary_is_diffuse_gi) &&
-           lightprobe_uses_world(samp))
+           probe_uses_world)
   {
     /* Receiver shading does not have its own environment-visibility buffer yet, but transmission
      * receivers still need the traced transmitted/world direction rather than the front mirror texel
@@ -1590,9 +1674,13 @@ void transmission_receiver_hit_closure_light_terms(int2 texel_fullres,
     geometry_offset = object_infos.shadow_terminator_geometry_offset;
   }
   shadow_dispatch_texel_fullres = texel;
+  shadow_dispatch_visibility_source = HWRT_SHADOW_VISIBILITY_TRANSMISSION_RECEIVER;
+  shadow_dispatch_allow_transmission_hardware_rt = true;
+  shadow_dispatch_force_unshadowed = primary_is_diffuse_gi;
   shadow_dispatch_use_hardware_rt = false;
-  if ((use_hardware_rt_shadows || use_hardware_rt_environment_visibility) &&
-      !direct_lit_refracted_textured_receiver)
+  if (!primary_is_diffuse_gi &&
+      (use_hardware_rt_shadows ||
+       (use_hardware_rt_environment_visibility && !direct_lit_refracted_textured_receiver)))
   {
     shadow_dispatch_use_hardware_rt = transmission_receiver_hit_shadow_payload_valid(texel);
   }
@@ -1733,10 +1821,25 @@ float3 transmission_receiver_hit_radiance_resolve(int2 texel,
                                                 primary_is_diffuse_gi,
                                                 specular_direct,
                                                 specular_probe);
+  const bool scene_final_transmission_diffuse_receiver =
+      (uniform_buf.raytrace.hardware_trace_phase == HWRT_TRACE_PHASE_SCENE_FINAL_SPECULAR) &&
+      ((base_cl.type == CLOSURE_BSDF_DIFFUSE_ID) || (base_cl.type == CLOSURE_BSSRDF_BURLEY_ID));
+  float3 transmission_receiver_gi_radiance = float3(0.0f);
+  const bool scene_final_transmission_receiver_gi =
+      scene_final_transmission_diffuse_receiver &&
+      hardware_transmission_receiver_gi_load(texel, transmission_receiver_gi_radiance);
   radiance += base_direct + specular_direct;
-  if (primary_is_diffuse_gi ||
-      (uniform_buf.raytrace.hardware_trace_phase == HWRT_TRACE_PHASE_SCENE_FINAL_SPECULAR))
-  {
+  const bool add_probe_terms =
+      primary_is_diffuse_gi ||
+      (uniform_buf.raytrace.hardware_trace_phase == HWRT_TRACE_PHASE_SCENE_FINAL_SPECULAR);
+  if (scene_final_transmission_receiver_gi) {
+    radiance += (transmission_receiver_gi_radiance * max(base_cl.color, float3(0.0f))) /
+                max(uniform_buf.clamp.indirect_scale, 1.0e-4f);
+    if (add_probe_terms) {
+      radiance += specular_probe;
+    }
+  }
+  else if (add_probe_terms) {
     radiance += base_probe + specular_probe;
   }
   float4 carried_throughput = transmission_receiver_hit_throughput_load(texel);
@@ -2209,6 +2312,15 @@ void main()
     caustic_transport_seed = raster_radiance;
   }
   if (!precombine_specular_caustics_phase && !scene_final_specular_phase &&
+      primary_is_diffuse_gi && !hardware_hit_uses_caustics() &&
+      hardware_hit_visible_direct_light_load(texel, P_hit, N, true, raster_radiance))
+  {
+    /* Primary RT shadows are evaluated before this pass. Diffuse GI can therefore transport the
+     * current visible wall/surface direct-light energy instead of re-estimating it from a secondary
+     * shadow query that can collapse colored bounce to black. */
+    radiance += raster_radiance;
+  }
+  else if (!precombine_specular_caustics_phase && !scene_final_specular_phase &&
       allow_scene_final_raster_reuse && !primary_requests_resolved_surface &&
       !hardware_hit_uses_caustics() &&
       hardware_hit_allows_raster_reuse(

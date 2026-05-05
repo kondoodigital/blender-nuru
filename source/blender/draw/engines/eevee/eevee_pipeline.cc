@@ -1087,6 +1087,15 @@ gpu::Texture *DeferredLayer::render(View &main_view,
   inst_.raytracing.render_environment_visibility(
       render_view, visibility_depth_tx, visibility_normal_tx, extent);
 
+  gpu::Texture *shadow_depth_tx = indirect_gi_cache_rendering ?
+                                      nullptr :
+                                      static_cast<gpu::Texture *>(rb.depth_tx);
+  gpu::Texture *shadow_normal_tx = indirect_gi_cache_rendering ?
+                                       nullptr :
+                                       static_cast<gpu::Texture *>(inst_.gbuffer.normal_tx);
+  inst_.raytracing.render_directional_shadow_visibility(
+      render_view, shadow_depth_tx, shadow_normal_tx, extent);
+
   if (use_raytracing_) {
     if (defer_scene_final_hardware_specular_) {
       uint32_t pre_feature_mask = 0;
@@ -1149,12 +1158,6 @@ gpu::Texture *DeferredLayer::render(View &main_view,
     indirect_result_ = inst_.raytracing.alloc_dummy(rt_buffer);
   }
 
-  gpu::Texture *shadow_depth_tx = indirect_gi_cache_rendering ?
-                                      nullptr :
-                                      static_cast<gpu::Texture *>(rb.depth_tx);
-  gpu::Texture *shadow_normal_tx = indirect_gi_cache_rendering ?
-                                       nullptr :
-                                       static_cast<gpu::Texture *>(inst_.gbuffer.normal_tx);
   inst_.raytracing.render_directional_shadow_visibility(
       render_view, shadow_depth_tx, shadow_normal_tx, extent);
 
