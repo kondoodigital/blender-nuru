@@ -729,6 +729,27 @@ bool hardware_transmission_receiver_gi_load(int2 texel, float3 &radiance)
   return (gi.a > 0.5f) && (dot(radiance, radiance) > 1.0e-10f);
 }
 
+bool hardware_secondary_photon_gi_load(int2 texel, float3 &radiance)
+{
+  float4 gi = texelFetch(hardware_secondary_photon_gi_tx, texel, 0);
+  radiance = max(gi.rgb, float3(0.0f));
+  return (gi.a > 0.5f) && (dot(radiance, radiance) > 1.0e-10f);
+}
+
+bool hardware_layered_secondary_photon_gi_load(int2 texel, float3 &radiance)
+{
+  float4 gi = texelFetch(hardware_layered_secondary_photon_gi_tx, texel, 0);
+  radiance = max(gi.rgb, float3(0.0f));
+  return (gi.a > 0.5f) && (dot(radiance, radiance) > 1.0e-10f);
+}
+
+bool hardware_transmission_secondary_photon_gi_load(int2 texel, float3 &radiance)
+{
+  float4 gi = texelFetch(hardware_transmission_secondary_photon_gi_tx, texel, 0);
+  radiance = max(gi.rgb, float3(0.0f));
+  return (gi.a > 0.5f) && (dot(radiance, radiance) > 1.0e-10f);
+}
+
 /* Indirect/base-family simplification:
  * - proxy payloads keep at most one base-family lobe,
  * - subsurface collapses to diffuse,
@@ -1455,6 +1476,10 @@ float3 layered_receiver_hit_radiance_resolve(int2 texel, int2 texel_fullres, boo
   const bool scene_final_layered_receiver_gi =
       scene_final_layered_diffuse_receiver &&
       hardware_layered_receiver_gi_load(texel, layered_receiver_gi_radiance);
+  float3 layered_secondary_photon_gi_radiance = float3(0.0f);
+  const bool scene_final_layered_secondary_photon_gi =
+      (uniform_buf.raytrace.hardware_trace_phase == HWRT_TRACE_PHASE_SCENE_FINAL_SPECULAR) &&
+      hardware_layered_secondary_photon_gi_load(texel, layered_secondary_photon_gi_radiance);
   radiance += base_direct + specular_direct;
   const bool add_probe_terms =
       primary_is_diffuse_gi ||
@@ -1469,6 +1494,10 @@ float3 layered_receiver_hit_radiance_resolve(int2 texel, int2 texel_fullres, boo
   else if (add_probe_terms)
   {
     radiance += base_probe + specular_probe;
+  }
+  if (scene_final_layered_secondary_photon_gi) {
+    radiance += layered_secondary_photon_gi_radiance /
+                max(uniform_buf.clamp.indirect_scale, 1.0e-4f);
   }
   float4 carried_throughput = layered_receiver_hit_throughput_load(texel);
   if (carried_throughput.a > 0.5f) {
@@ -1828,6 +1857,11 @@ float3 transmission_receiver_hit_radiance_resolve(int2 texel,
   const bool scene_final_transmission_receiver_gi =
       scene_final_transmission_diffuse_receiver &&
       hardware_transmission_receiver_gi_load(texel, transmission_receiver_gi_radiance);
+  float3 transmission_secondary_photon_gi_radiance = float3(0.0f);
+  const bool scene_final_transmission_secondary_photon_gi =
+      (uniform_buf.raytrace.hardware_trace_phase == HWRT_TRACE_PHASE_SCENE_FINAL_SPECULAR) &&
+      hardware_transmission_secondary_photon_gi_load(texel,
+                                                    transmission_secondary_photon_gi_radiance);
   radiance += base_direct + specular_direct;
   const bool add_probe_terms =
       primary_is_diffuse_gi ||
@@ -1841,6 +1875,10 @@ float3 transmission_receiver_hit_radiance_resolve(int2 texel,
   }
   else if (add_probe_terms) {
     radiance += base_probe + specular_probe;
+  }
+  if (scene_final_transmission_secondary_photon_gi) {
+    radiance += transmission_secondary_photon_gi_radiance /
+                max(uniform_buf.clamp.indirect_scale, 1.0e-4f);
   }
   float4 carried_throughput = transmission_receiver_hit_throughput_load(texel);
   if (carried_throughput.a > 0.5f) {
@@ -2386,6 +2424,10 @@ void main()
     float3 receiver_gi_radiance = float3(0.0f);
     const bool scene_final_receiver_gi =
         scene_final_diffuse_receiver && hardware_reflected_receiver_gi_load(texel, receiver_gi_radiance);
+    float3 secondary_photon_gi_radiance = float3(0.0f);
+    const bool scene_final_secondary_photon_gi =
+        scene_final_specular_phase &&
+        hardware_secondary_photon_gi_load(texel, secondary_photon_gi_radiance);
     if (!precombine_specular_caustics_phase) {
       const bool add_probe_terms = primary_is_diffuse_gi || scene_final_specular_phase;
       if (scene_final_receiver_gi) {
@@ -2413,6 +2455,10 @@ void main()
       radiance += specular_direct * principled_reflection_layer_visibility;
       if (add_probe_terms) {
         radiance += specular_probe * principled_reflection_layer_visibility;
+      }
+      if (scene_final_secondary_photon_gi) {
+        radiance += secondary_photon_gi_radiance /
+                    max(uniform_buf.clamp.indirect_scale, 1.0e-4f);
       }
       if (preserved_layered_scene_final &&
           dot(layered_receiver_radiance, layered_receiver_radiance) > 1.0e-10f)

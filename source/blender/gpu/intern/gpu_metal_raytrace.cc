@@ -202,6 +202,20 @@ bool GPU_metal_raytrace_scene_trace_reflected_receiver_gi(
   return false;
 }
 
+bool GPU_metal_raytrace_scene_trace_secondary_photon_gi(
+    GPUMetalRaytraceScene *scene, const GPUMetalRaytraceSecondaryPhotonGIParams &params)
+{
+#ifdef WITH_METAL_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
+    return gpu::metal::raytrace_scene_trace_secondary_photon_gi(scene, params);
+  }
+#else
+  (void)scene;
+  (void)params;
+#endif
+  return false;
+}
+
 void GPU_metal_raytrace_scene_free(GPUMetalRaytraceScene *scene)
 {
 #ifdef WITH_METAL_BACKEND

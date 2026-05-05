@@ -1320,6 +1320,18 @@ void RayTraceModule::init()
       gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
   hardware_transmission_receiver_gi_blur_tx_.ensure_2d(
       gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
+  hardware_secondary_photon_gi_tx_.ensure_2d(
+      gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
+  hardware_secondary_photon_gi_blur_tx_.ensure_2d(
+      gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
+  hardware_layered_secondary_photon_gi_tx_.ensure_2d(
+      gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
+  hardware_layered_secondary_photon_gi_blur_tx_.ensure_2d(
+      gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
+  hardware_transmission_secondary_photon_gi_tx_.ensure_2d(
+      gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
+  hardware_transmission_secondary_photon_gi_blur_tx_.ensure_2d(
+      gpu::TextureFormat::SFLOAT_16_16_16_16, int2(1), cache_usage);
   GPU_texture_clear(hardware_indirect_gi_radiance_cache_tx_, GPU_DATA_FLOAT, &zero);
   GPU_texture_clear(hardware_indirect_gi_position_cache_tx_, GPU_DATA_FLOAT, &zero);
   GPU_texture_clear(hardware_indirect_gi_normal_cache_tx_, GPU_DATA_FLOAT, &zero);
@@ -1329,6 +1341,12 @@ void RayTraceModule::init()
   GPU_texture_clear(hardware_layered_receiver_gi_blur_tx_, GPU_DATA_FLOAT, &zero);
   GPU_texture_clear(hardware_transmission_receiver_gi_tx_, GPU_DATA_FLOAT, &zero);
   GPU_texture_clear(hardware_transmission_receiver_gi_blur_tx_, GPU_DATA_FLOAT, &zero);
+  GPU_texture_clear(hardware_secondary_photon_gi_tx_, GPU_DATA_FLOAT, &zero);
+  GPU_texture_clear(hardware_secondary_photon_gi_blur_tx_, GPU_DATA_FLOAT, &zero);
+  GPU_texture_clear(hardware_layered_secondary_photon_gi_tx_, GPU_DATA_FLOAT, &zero);
+  GPU_texture_clear(hardware_layered_secondary_photon_gi_blur_tx_, GPU_DATA_FLOAT, &zero);
+  GPU_texture_clear(hardware_transmission_secondary_photon_gi_tx_, GPU_DATA_FLOAT, &zero);
+  GPU_texture_clear(hardware_transmission_secondary_photon_gi_blur_tx_, GPU_DATA_FLOAT, &zero);
   if (!hardware_fast_gi_tx_.is_valid()) {
     hardware_fast_gi_tx_.ensure_3d(gpu::TextureFormat::SFLOAT_16_16_16_16,
                                    int3(1),
@@ -1416,6 +1434,9 @@ void RayTraceModule::warm_hardware_tracing_backend()
   inst_.manager->warm_shader_specialization(hardware_reflected_receiver_gi_blur_ps_);
   inst_.manager->warm_shader_specialization(hardware_layered_receiver_gi_blur_ps_);
   inst_.manager->warm_shader_specialization(hardware_transmission_receiver_gi_blur_ps_);
+  inst_.manager->warm_shader_specialization(hardware_secondary_photon_gi_blur_ps_);
+  inst_.manager->warm_shader_specialization(hardware_layered_secondary_photon_gi_blur_ps_);
+  inst_.manager->warm_shader_specialization(hardware_transmission_secondary_photon_gi_blur_ps_);
   inst_.manager->warm_shader_specialization(hardware_indirect_gi_cache_store_ps_);
   inst_.manager->warm_shader_specialization(scene_final_specular_resolve_ps_);
 }
@@ -2831,7 +2852,7 @@ void RayTraceModule::render_directional_shadow_visibility(View &render_view,
                  trace_ms,
                  elapsed_ms);
   }
-  if (!inst_.is_viewport() || !use_direct_rt_shadows) {
+  if (!inst_.is_viewport() || !use_direct_rt_shadows || !hardware_direct_light_dispatch_ready_) {
     return;
   }
   inst_.manager->submit(hardware_direct_light_visibility_ps_);
@@ -3214,6 +3235,10 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
   hardware_reflected_receiver_gi_blur_tx_.clear(float4(0.0f));
   hardware_layered_receiver_gi_tx_.clear(float4(0.0f));
   hardware_layered_receiver_gi_blur_tx_.clear(float4(0.0f));
+  hardware_secondary_photon_gi_tx_.clear(float4(0.0f));
+  hardware_secondary_photon_gi_blur_tx_.clear(float4(0.0f));
+  hardware_layered_secondary_photon_gi_tx_.clear(float4(0.0f));
+  hardware_layered_secondary_photon_gi_blur_tx_.clear(float4(0.0f));
   transmission_receiver_ray_time_tx_.clear(float4(0.0f));
   transmission_receiver_ray_radiance_tx_.clear(float4(0.0f));
   transmission_receiver_albedo_tx_.clear(float4(0.0f));
@@ -3224,6 +3249,10 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
   transmission_receiver_world_position_tx_.clear(float4(0.0f));
   transmission_receiver_identity_tx_.clear(uint4(0u));
   transmission_receiver_barycentric_tx_.clear(float4(0.0f));
+  hardware_transmission_receiver_gi_tx_.clear(float4(0.0f));
+  hardware_transmission_receiver_gi_blur_tx_.clear(float4(0.0f));
+  hardware_transmission_secondary_photon_gi_tx_.clear(float4(0.0f));
+  hardware_transmission_secondary_photon_gi_blur_tx_.clear(float4(0.0f));
   GPU_flush();
 
   const double scene_acquire_start = perf_logging_enabled ? BLI_time_now_seconds() : 0.0;
@@ -3363,6 +3392,7 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
                                            (BLI_time_now_seconds() - secondary_shadow_start) * 1000.0 :
                                            0.0;
     render_reflected_receiver_gi(metal_scene, tracing_res);
+    render_secondary_photon_gi(metal_scene, tracing_res);
     inst_.manager->submit(trace_hardware_lighting_ps_, render_view);
     if (perf_logging_enabled) {
       const double elapsed_ms = (BLI_time_now_seconds() - perf_start_time) * 1000.0;
@@ -3920,6 +3950,11 @@ void RayTraceModule::sync()
     pass.bind_texture("hardware_layered_receiver_gi_tx", &hardware_layered_receiver_gi_blur_tx_);
     pass.bind_texture("hardware_transmission_receiver_gi_tx",
                       &hardware_transmission_receiver_gi_blur_tx_);
+    pass.bind_texture("hardware_secondary_photon_gi_tx", &hardware_secondary_photon_gi_blur_tx_);
+    pass.bind_texture("hardware_layered_secondary_photon_gi_tx",
+                      &hardware_layered_secondary_photon_gi_blur_tx_);
+    pass.bind_texture("hardware_transmission_secondary_photon_gi_tx",
+                      &hardware_transmission_secondary_photon_gi_blur_tx_);
     pass.bind_texture("hardware_direct_light_tx", &hardware_direct_light_denoised_tx_);
     pass.bind_texture("hardware_fast_gi_tx", &hardware_fast_gi_tx_, fast_gi_field_sampler);
     pass.bind_texture(
@@ -3986,6 +4021,55 @@ void RayTraceModule::sync()
     pass.bind_texture("ray_time_tx", &transmission_receiver_ray_time_tx_);
     pass.bind_texture("hit_identity_tx", &transmission_receiver_identity_tx_);
     pass.bind_image("out_reflected_receiver_gi_img", &hardware_transmission_receiver_gi_blur_tx_);
+    pass.bind_ssbo("tiles_coord_buf", &hardware_resolve_tiles_buf_);
+    pass.push_constant("reflected_receiver_gi_resolution_divisor",
+                       &hardware_reflected_receiver_gi_resolution_divisor_);
+    pass.dispatch(hardware_resolve_dispatch_buf_);
+    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_TEXTURE_FETCH);
+  }
+  {
+    PassSimple &pass = hardware_secondary_photon_gi_blur_ps_;
+    pass.init();
+    pass.shader_set(inst_.shaders.static_shader_get(RAY_HARDWARE_REFLECTED_RECEIVER_GI_BLUR));
+    pass.bind_texture("reflected_receiver_gi_tx", &hardware_secondary_photon_gi_tx_);
+    pass.bind_texture("hit_normal_tx", &hit_normal_tx_);
+    pass.bind_texture("hit_world_position_tx", &hit_world_position_tx_);
+    pass.bind_texture("ray_time_tx", &ray_time_tx_);
+    pass.bind_texture("hit_identity_tx", &hit_identity_tx_);
+    pass.bind_image("out_reflected_receiver_gi_img", &hardware_secondary_photon_gi_blur_tx_);
+    pass.bind_ssbo("tiles_coord_buf", &hardware_resolve_tiles_buf_);
+    pass.push_constant("reflected_receiver_gi_resolution_divisor",
+                       &hardware_reflected_receiver_gi_resolution_divisor_);
+    pass.dispatch(hardware_resolve_dispatch_buf_);
+    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_TEXTURE_FETCH);
+  }
+  {
+    PassSimple &pass = hardware_layered_secondary_photon_gi_blur_ps_;
+    pass.init();
+    pass.shader_set(inst_.shaders.static_shader_get(RAY_HARDWARE_REFLECTED_RECEIVER_GI_BLUR));
+    pass.bind_texture("reflected_receiver_gi_tx", &hardware_layered_secondary_photon_gi_tx_);
+    pass.bind_texture("hit_normal_tx", &layered_receiver_normal_tx_);
+    pass.bind_texture("hit_world_position_tx", &layered_receiver_world_position_tx_);
+    pass.bind_texture("ray_time_tx", &layered_receiver_ray_time_tx_);
+    pass.bind_texture("hit_identity_tx", &layered_receiver_identity_tx_);
+    pass.bind_image("out_reflected_receiver_gi_img", &hardware_layered_secondary_photon_gi_blur_tx_);
+    pass.bind_ssbo("tiles_coord_buf", &hardware_resolve_tiles_buf_);
+    pass.push_constant("reflected_receiver_gi_resolution_divisor",
+                       &hardware_reflected_receiver_gi_resolution_divisor_);
+    pass.dispatch(hardware_resolve_dispatch_buf_);
+    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS | GPU_BARRIER_TEXTURE_FETCH);
+  }
+  {
+    PassSimple &pass = hardware_transmission_secondary_photon_gi_blur_ps_;
+    pass.init();
+    pass.shader_set(inst_.shaders.static_shader_get(RAY_HARDWARE_REFLECTED_RECEIVER_GI_BLUR));
+    pass.bind_texture("reflected_receiver_gi_tx", &hardware_transmission_secondary_photon_gi_tx_);
+    pass.bind_texture("hit_normal_tx", &transmission_receiver_normal_tx_);
+    pass.bind_texture("hit_world_position_tx", &transmission_receiver_world_position_tx_);
+    pass.bind_texture("ray_time_tx", &transmission_receiver_ray_time_tx_);
+    pass.bind_texture("hit_identity_tx", &transmission_receiver_identity_tx_);
+    pass.bind_image("out_reflected_receiver_gi_img",
+                    &hardware_transmission_secondary_photon_gi_blur_tx_);
     pass.bind_ssbo("tiles_coord_buf", &hardware_resolve_tiles_buf_);
     pass.push_constant("reflected_receiver_gi_resolution_divisor",
                        &hardware_reflected_receiver_gi_resolution_divisor_);
@@ -4568,9 +4652,11 @@ RayTraceResult RayTraceModule::render_phase(RayTraceBuffer &rt_buffer,
   if (has_active_closure) {
     inst_.manager->submit(tile_classify_ps_);
   }
+  hardware_direct_light_dispatch_ready_ = false;
   if (use_hardware_tracing()) {
     hardware_direct_light_dispatch_buf_.clear_to_zero();
     inst_.manager->submit(hardware_direct_light_tile_compact_ps_);
+    hardware_direct_light_dispatch_ready_ = true;
   }
 
   data_.trace_refraction = screen_radiance_back_tx != nullptr;
@@ -4744,6 +4830,111 @@ void RayTraceModule::render_reflected_receiver_gi(GPUMetalRaytraceScene *metal_s
 
   GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
   inst_.manager->submit(hardware_transmission_receiver_gi_blur_ps_);
+}
+
+void RayTraceModule::render_secondary_photon_gi(GPUMetalRaytraceScene *metal_scene,
+                                                int2 tracing_extent)
+{
+  if (metal_scene == nullptr ||
+      data_.hardware_trace_phase != int(HWRT_TRACE_PHASE_SCENE_FINAL_SPECULAR) ||
+      !inst_.scene->eevee.use_hardware_raytracing_indirect_gi_cache ||
+      (!use_hardware_reflections() && !use_hardware_refractions()))
+  {
+    return;
+  }
+
+  const SphereProbe &world_probe = inst_.sphere_probes.world_sphere_probe();
+  const bool world_probe_available = world_probe.atlas_coord.atlas_layer >= 0 &&
+                                     world_probe.atlas_coord.subdivision_lvl >= 0;
+  const SphereProbeUvArea world_probe_atlas_coord = world_probe_available ?
+                                                       world_probe.atlas_coord.as_sampling_coord() :
+                                                       SphereProbeUvArea{
+                                                           float2(0.0f), 0.0f, -1.0f};
+  Vector<LightData> local_lights;
+  Vector<LightData> sun_lights;
+  Vector<int> sun_light_world_slots;
+  inst_.lights.append_sync_local_lights(local_lights);
+  inst_.lights.append_sync_sun_lights(sun_lights, &sun_light_world_slots);
+  const int light_count = min_ii(256, int(local_lights.size() + sun_lights.size()));
+  for (int light_index = 0; light_index < light_count; light_index++) {
+    const LightData &light = (light_index < local_lights.size()) ?
+                                 local_lights[light_index] :
+                                 sun_lights[light_index - local_lights.size()];
+    hardware_fast_gi_light_buf_.get_or_resize(light_index) =
+        hardware_fast_gi_light_record_from_light(light);
+  }
+  if (light_count > 0) {
+    hardware_fast_gi_light_buf_.resize(light_count);
+    hardware_fast_gi_light_buf_.push_update();
+  }
+
+  GPUMetalRaytraceSecondaryPhotonGIParams params;
+  params.secondary_photon_gi_tx = hardware_secondary_photon_gi_tx_;
+  params.world_probe_tx = inst_.sphere_probes.octahedral_probes_texture();
+  params.light_buf = (light_count > 0) ?
+                         static_cast<gpu::StorageBuf *>(hardware_fast_gi_light_buf_) :
+                         nullptr;
+  params.dispatch_buf = hardware_resolve_dispatch_buf_;
+  params.tiles_coord_buf = hardware_resolve_tiles_buf_;
+  params.ray_time_tx = ray_time_tx_;
+  params.hit_albedo_tx = hit_albedo_tx_;
+  params.hit_material_tx = hit_material_tx_;
+  params.hit_normal_tx = hit_normal_tx_;
+  params.hit_world_position_tx = hit_world_position_tx_;
+  params.tracing_resolution = tracing_extent;
+  hardware_reflected_receiver_gi_resolution_divisor_ = hardware_indirect_gi_resolution_sanitize(
+      inst_.scene->eevee.hardware_raytracing_indirect_gi_resolution);
+  params.resolution_divisor = hardware_reflected_receiver_gi_resolution_divisor_;
+  params.sample_count = inst_.is_viewport() ? 3 : 6;
+  params.light_count = light_count;
+  params.light_sample_count = min_ii(inst_.is_viewport() ? 1 : 2,
+                                     hardware_fast_gi_direct_light_sample_count(
+                                         light_count, inst_.is_viewport(), hardware_fast_gi_quality_tier_));
+  params.normal_bias = 1.0e-3f;
+  params.use_environment = use_hardware_environment();
+  const float3 raytrace_rng = inst_.sampling.rng_3d_get(eSamplingDimension::SAMPLING_RAYTRACE_U);
+  params.sampling_rand = float4(
+      raytrace_rng.x,
+      raytrace_rng.y,
+      raytrace_rng.z,
+      inst_.sampling.rng_get(eSamplingDimension::SAMPLING_CLOSURE));
+  params.world_probe_atlas_coord = float4(world_probe_atlas_coord.offset.x,
+                                          world_probe_atlas_coord.offset.y,
+                                          world_probe_atlas_coord.scale,
+                                          world_probe_atlas_coord.layer);
+
+  if (!GPU_metal_raytrace_scene_trace_secondary_photon_gi(metal_scene, params)) {
+    return;
+  }
+
+  GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  inst_.manager->submit(hardware_secondary_photon_gi_blur_ps_);
+
+  params.secondary_photon_gi_tx = hardware_layered_secondary_photon_gi_tx_;
+  params.ray_time_tx = layered_receiver_ray_time_tx_;
+  params.hit_albedo_tx = layered_receiver_albedo_tx_;
+  params.hit_material_tx = layered_receiver_material_tx_;
+  params.hit_normal_tx = layered_receiver_normal_tx_;
+  params.hit_world_position_tx = layered_receiver_world_position_tx_;
+  if (!GPU_metal_raytrace_scene_trace_secondary_photon_gi(metal_scene, params)) {
+    return;
+  }
+
+  GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  inst_.manager->submit(hardware_layered_secondary_photon_gi_blur_ps_);
+
+  params.secondary_photon_gi_tx = hardware_transmission_secondary_photon_gi_tx_;
+  params.ray_time_tx = transmission_receiver_ray_time_tx_;
+  params.hit_albedo_tx = transmission_receiver_albedo_tx_;
+  params.hit_material_tx = transmission_receiver_material_tx_;
+  params.hit_normal_tx = transmission_receiver_normal_tx_;
+  params.hit_world_position_tx = transmission_receiver_world_position_tx_;
+  if (!GPU_metal_raytrace_scene_trace_secondary_photon_gi(metal_scene, params)) {
+    return;
+  }
+
+  GPU_memory_barrier(GPU_BARRIER_TEXTURE_FETCH | GPU_BARRIER_SHADER_IMAGE_ACCESS);
+  inst_.manager->submit(hardware_transmission_secondary_photon_gi_blur_ps_);
 }
 
 void RayTraceModule::render_hardware_indirect_gi_cache(View &main_view)
@@ -5112,6 +5303,18 @@ RayTraceResultTexture RayTraceModule::trace(
     hardware_transmission_receiver_gi_tx_.ensure_2d(
         gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
     hardware_transmission_receiver_gi_blur_tx_.ensure_2d(
+        gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
+    hardware_secondary_photon_gi_tx_.ensure_2d(
+        gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
+    hardware_secondary_photon_gi_blur_tx_.ensure_2d(
+        gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
+    hardware_layered_secondary_photon_gi_tx_.ensure_2d(
+        gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
+    hardware_layered_secondary_photon_gi_blur_tx_.ensure_2d(
+        gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
+    hardware_transmission_secondary_photon_gi_tx_.ensure_2d(
+        gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
+    hardware_transmission_secondary_photon_gi_blur_tx_.ensure_2d(
         gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_res, usage_rw);
     transmission_receiver_ray_time_tx_.acquire(
         tracing_res, gpu::TextureFormat::RAYTRACE_RAYTIME_FORMAT, usage_rw);

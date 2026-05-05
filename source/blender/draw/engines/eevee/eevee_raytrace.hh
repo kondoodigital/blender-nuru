@@ -169,6 +169,11 @@ class RayTraceModule {
   draw::PassSimple hardware_layered_receiver_gi_blur_ps_ = {"Trace.HardwareLayeredReceiverGIBlur"};
   draw::PassSimple hardware_transmission_receiver_gi_blur_ps_ = {
       "Trace.HardwareTransmissionReceiverGIBlur"};
+  draw::PassSimple hardware_secondary_photon_gi_blur_ps_ = {"Trace.HardwareSecondaryPhotonGIBlur"};
+  draw::PassSimple hardware_layered_secondary_photon_gi_blur_ps_ = {
+      "Trace.HardwareLayeredSecondaryPhotonGIBlur"};
+  draw::PassSimple hardware_transmission_secondary_photon_gi_blur_ps_ = {
+      "Trace.HardwareTransmissionSecondaryPhotonGIBlur"};
   draw::PassSimple scene_final_specular_resolve_ps_ = {"Trace.SceneFinalSpecularResolve"};
   draw::PassSimple hardware_indirect_gi_cache_store_ps_ = {"Trace.HardwareIndirectGICacheStore"};
   draw::PassSimple hardware_fast_gi_update_ps_[3] = {{"Trace.HardwareFastGIUpdate0"},
@@ -341,6 +346,15 @@ class RayTraceModule {
   Texture hardware_transmission_receiver_gi_tx_ = {"hardware_transmission_receiver_gi_tx_"};
   Texture hardware_transmission_receiver_gi_blur_tx_ = {
       "hardware_transmission_receiver_gi_blur_tx_"};
+  Texture hardware_secondary_photon_gi_tx_ = {"hardware_secondary_photon_gi_tx_"};
+  Texture hardware_secondary_photon_gi_blur_tx_ = {"hardware_secondary_photon_gi_blur_tx_"};
+  Texture hardware_layered_secondary_photon_gi_tx_ = {"hardware_layered_secondary_photon_gi_tx_"};
+  Texture hardware_layered_secondary_photon_gi_blur_tx_ = {
+      "hardware_layered_secondary_photon_gi_blur_tx_"};
+  Texture hardware_transmission_secondary_photon_gi_tx_ = {
+      "hardware_transmission_secondary_photon_gi_tx_"};
+  Texture hardware_transmission_secondary_photon_gi_blur_tx_ = {
+      "hardware_transmission_secondary_photon_gi_blur_tx_"};
   Texture hardware_fast_gi_tx_ = {"hardware_fast_gi_tx_"};
   Texture hardware_fast_gi_error_tx_ = {"hardware_fast_gi_error_tx_"};
   Texture hardware_fast_gi_visibility_tx_ = {"hardware_fast_gi_visibility_tx_"};
@@ -437,6 +451,7 @@ class RayTraceModule {
   uint64_t hardware_primary_shadow_visibility_sample_index_ = 0;
   bool hardware_primary_shadow_direct_enabled_ = false;
   bool hardware_primary_shadow_world_enabled_ = false;
+  bool hardware_direct_light_dispatch_ready_ = false;
 
   RaytraceEEVEE_Method tracing_method_ = RAYTRACE_EEVEE_METHOD_PROBE;
   int hardware_scene_entry_count_ = 0;
@@ -522,6 +537,7 @@ class RayTraceModule {
                                     gpu::Texture *hit_identity_tx,
                                     Texture &shadow_visibility_tx);
   void render_reflected_receiver_gi(GPUMetalRaytraceScene *metal_scene, int2 tracing_extent);
+  void render_secondary_photon_gi(GPUMetalRaytraceScene *metal_scene, int2 tracing_extent);
   void render_hardware_indirect_gi_cache(View &main_view);
   void update_hardware_fast_gi_field(
       View &render_view, gpu::Texture *depth_tx, gpu::Texture *input_radiance_tx, int2 extent);

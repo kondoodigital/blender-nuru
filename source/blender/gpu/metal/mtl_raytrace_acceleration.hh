@@ -37,6 +37,8 @@ bool raytrace_scene_trace_fast_gi(GPUMetalRaytraceScene *scene,
                                   const GPUMetalRaytraceFastGIParams &params);
 bool raytrace_scene_trace_reflected_receiver_gi(
     GPUMetalRaytraceScene *scene, const GPUMetalRaytraceReflectedReceiverGIParams &params);
+bool raytrace_scene_trace_secondary_photon_gi(
+    GPUMetalRaytraceScene *scene, const GPUMetalRaytraceSecondaryPhotonGIParams &params);
 void raytrace_scene_free(GPUMetalRaytraceScene *scene);
 
 }  // namespace blender::gpu::metal
