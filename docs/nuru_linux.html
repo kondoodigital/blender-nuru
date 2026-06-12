@@ -1,0 +1,89 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Kondoo Digital GmbH -->
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuru On Linux</title>
+  <link rel="stylesheet" href="nuru_docs.css">
+</head>
+<body>
+<main>
+  <section class="hero">
+    <p class="eyebrow">Nuru Documentation</p>
+    <h1>Nuru On Linux</h1>
+    <p class="lede">Blender-Nuru for Linux runs Eevee on the Vulkan graphics backend with Nuru hardware ray tracing on NVIDIA RTX GPUs. This page covers requirements, installation, and Linux-specific notes.</p>
+    <nav class="nav" aria-label="Documentation navigation">
+      <a href="README.html">Docs Home</a>
+      <a href="nuru_overview.html">Overview</a>
+      <a href="nuru_ui_reference.html">UI Reference</a>
+      <a href="nuru_shadows_and_lights.html">Shadows And Lights</a>
+      <a href="nuru_materials.html">Materials</a>
+      <a href="nuru_dos_and_donts.html">Dos And Don'ts</a>
+      <a href="nuru_macos.html">macOS</a>
+      <a href="nuru_windows.html">Windows</a>
+    </nav>
+  </section>
+
+  <h2>Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Operating system</td><td>64-bit Linux. The <code>.deb</code> package targets Ubuntu 22.04+ / Debian 12+; the portable archive runs on any current distribution</td></tr>
+    <tr><td>GPU</td><td>NVIDIA GeForce RTX class with hardware ray tracing (RTX 20 series or newer); validated on RTX 50 series</td></tr>
+    <tr><td>GPU driver</td><td>NVIDIA proprietary driver, 595 series or newer</td></tr>
+    <tr><td>Graphics backend</td><td>Vulkan, built into the package; no extra setup is needed</td></tr>
+    <tr><td>Other GPUs</td><td>AMD and Intel GPUs are not yet validated for Nuru hardware ray tracing</td></tr>
+  </table>
+
+  <h2>Install</h2>
+
+  <h3>Debian package (recommended on Ubuntu and Debian)</h3>
+  <ol>
+    <li>Download the Linux <code>.deb</code> (<code>Blender-Nuru-linux-&lt;version&gt;.deb</code>) from the <a href="https://github.com/kondoodigital/blender-nuru/releases">Releases page</a>.</li>
+    <li>Install it: <code>sudo apt install ./Blender-Nuru-linux-&lt;version&gt;.deb</code></li>
+    <li>Start <strong>Blender-Nuru</strong> from your application menu, or run <code>blender-nuru</code> in a terminal. The package installs to <code>/opt/blender-nuru</code> and can be removed any time with <code>sudo apt remove blender-nuru</code>.</li>
+  </ol>
+
+  <h3>Portable archive</h3>
+  <ol>
+    <li>Download the Linux <code>.tar.gz</code> from the <a href="https://github.com/kondoodigital/blender-nuru/releases">Releases page</a>.</li>
+    <li>Unpack it anywhere you like, for example <code>~/blender-nuru</code>.</li>
+    <li>Start <strong><code>./blender-nuru</code></strong> from the unpacked folder. Running it from a terminal also shows log output, which is useful for reporting problems.</li>
+  </ol>
+
+  <h2>Enable Nuru</h2>
+  <ol>
+    <li>Open <strong>Render Properties</strong>.</li>
+    <li>Set the render engine to <strong>Eevee</strong>.</li>
+    <li>Enable <strong>Raytracing</strong>.</li>
+    <li>Set <strong>Method</strong> to <strong>Nuru Raytracing</strong>.</li>
+    <li>Use <strong>Quick Settings</strong> to enable the RT features you need.</li>
+  </ol>
+  <p>The Nuru <strong>Quick Settings</strong> appear when the active GPU supports the Nuru backend. If they stay hidden, update the NVIDIA driver and confirm the RTX GPU is the active render device.</p>
+
+  <h2>GPU Denoising</h2>
+  <p>Denoising on Linux runs on the GPU, and the denoiser shares its working memory directly with the renderer (zero-copy). The <strong>Denoise</strong> option is fast at every trace resolution and is safe to keep enabled for interactive work and final renders.</p>
+
+  <h2>Cycles On Linux</h2>
+  <p>This package also includes Cycles GPU kernels for NVIDIA <strong>CUDA</strong> and <strong>OptiX</strong>. Enable them under <strong>Edit &gt; Preferences &gt; System &gt; Cycles Render Devices</strong>.</p>
+
+  <h2>Troubleshooting</h2>
+  <table>
+    <tr><th>Symptom</th><th>What to do</th></tr>
+    <tr><td>Nuru Quick Settings do not appear</td><td>Update the NVIDIA driver to the 595 series or newer and confirm an RTX GPU is active.</td></tr>
+    <tr><td>The app does not start, or reports a Vulkan device error</td><td>Update the NVIDIA driver and make sure the proprietary driver (not Nouveau) is in use, then try again.</td></tr>
+    <tr><td>The first rendered frame is slow</td><td>Shaders and kernels warm up on the first render after installation; later frames are much faster.</td></tr>
+    <tr><td>The <code>.deb</code> fails to install on an older distribution</td><td>The package uses zstd compression and needs Ubuntu 22.04+ / Debian 12+. Use the portable <code>.tar.gz</code> instead.</td></tr>
+  </table>
+
+  <h2>Related</h2>
+  <ul>
+    <li><a href="nuru_overview.html">Nuru Overview</a></li>
+    <li><a href="nuru_ui_reference.html">UI Reference</a></li>
+    <li><a href="nuru_shadows_and_lights.html">Shadows And Lights</a></li>
+    <li><a href="nuru_materials.html">Materials</a></li>
+  </ul>
+</main>
+</body>
+</html>

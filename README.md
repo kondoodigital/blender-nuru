@@ -37,7 +37,7 @@
     <tr>
       <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-windows-5.1.1-0.9.8.exe"><strong>Installer 5.1.1-0.9.8</strong></a><br/><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-windows-5.1.1-0.9.8.zip">Portable Zip</a></td>
       <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-macos-5.1.1-0.9.8.zip"><strong>Download 5.1.1-0.9.8</strong></a></td>
-      <td align="center"><em>Coming soon</em></td>
+      <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-linux-5.1.1-0.9.8.deb"><strong>Deb Package 5.1.1-0.9.8</strong></a><br/><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-linux-5.1.1-0.9.8.tar.gz">Portable Tar</a></td>
     </tr>
   </table>
 </div>
@@ -50,7 +50,7 @@ Nuru is a hybrid real-time renderer. It is designed for interactive viewport fee
 
 | Area | Status |
 | --- | --- |
-| Packaged backends | Metal on macOS (`macos-metal`) and Vulkan on Windows (`windows-vulkan`) |
+| Packaged backends | Metal on macOS (`macos-metal`), Vulkan on Windows (`windows-vulkan`), and Vulkan on Linux (`linux-vulkan`) |
 | Shared source branch | `nuru-core` |
 | macOS implementation branch | `macos-metal` |
 | Windows implementation branch | `windows-vulkan` |
@@ -60,6 +60,8 @@ Nuru is a hybrid real-time renderer. It is designed for interactive viewport fee
 | Unsupported Apple GPUs | M1 and M2 do not provide the required hardware RT support |
 | Recommended Windows hardware | NVIDIA GeForce RTX (RTX 20 series or newer) with a current driver |
 | Recommended Windows version | Windows 10 or 11, 64-bit |
+| Recommended Linux hardware | NVIDIA GeForce RTX (RTX 20 series or newer) with the 595-series or newer proprietary driver |
+| Recommended Linux version | 64-bit Linux; Ubuntu 22.04+ / Debian 12+ for the `.deb`, any current distribution for the portable archive |
 
 ## Why Use Nuru
 
@@ -114,7 +116,7 @@ Nuru now uses a shared-core plus thin platform-branch model:
 | `windows-vulkan` | Windows Vulkan implementation branch, based on `nuru-core`. |
 | `linux-vulkan` | Linux Vulkan implementation branch, based on `nuru-core`. |
 
-Packaged builds are available for macOS (Metal) and Windows (Vulkan, NVIDIA RTX). Linux development takes shared behavior from `nuru-core` and keeps platform-specific Vulkan code on its own branch.
+Packaged builds are available for macOS (Metal), Windows (Vulkan, NVIDIA RTX), and Linux (Vulkan, NVIDIA RTX).
 
 ## Current Limits
 
@@ -135,6 +137,10 @@ xattr -dr com.apple.quarantine /path/to/Blender-Nuru.app
 
 The Windows build is unsigned, so the first start may show **"Windows protected your PC"** (SmartScreen). Click **More info**, then **Run anyway**. Unzip the package anywhere and start `Blender-Nuru.exe`; see [`docs/nuru_windows.html`](docs/nuru_windows.html) for requirements and details.
 
+## Linux Download Note
+
+Install the `.deb` with `sudo apt install ./Blender-Nuru-linux-<version>.deb` (Ubuntu 22.04+ / Debian 12+), or unpack the portable `.tar.gz` anywhere and start `./blender-nuru`. Nuru hardware ray tracing needs the NVIDIA proprietary driver, 595 series or newer; see [`docs/nuru_linux.html`](docs/nuru_linux.html) for requirements and details.
+
 ## Documentation
 
 Start with [`docs/README.html`](docs/README.html).
@@ -146,6 +152,7 @@ Start with [`docs/README.html`](docs/README.html).
 - [`docs/nuru_dos_and_donts.html`](docs/nuru_dos_and_donts.html) is the practical dos-and-don'ts guide for materials and settings.
 - [`docs/nuru_macos.html`](docs/nuru_macos.html) covers macOS requirements, installation, and platform notes.
 - [`docs/nuru_windows.html`](docs/nuru_windows.html) covers Windows requirements, installation, and platform notes.
+- [`docs/nuru_linux.html`](docs/nuru_linux.html) covers Linux requirements, installation, and platform notes.
 
 ## Upstream Blender Links
 

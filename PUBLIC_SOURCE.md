@@ -4,8 +4,10 @@ This repository publishes the complete corresponding source for the Blender-Nuru
 
 - Exact Nuru source commit (macOS binary): `be4bb28fa8ba1855f02d67018c3fe63b9b9b67e1`
 - Exact Nuru source commit (Windows binary): `b83ce6bd7424ebb0cb6bae7ec9cbc3344af6fcba`
+- Exact Nuru source commit (Linux binary): `1cede61a48a0b910ab660b9ee52204c56bceca43`
 - Public source snapshot: `Blender-Nuru 5.1.1-0.9.8 public source snapshot` plus the
-  `Blender-Nuru 5.1.1-0.9.8 Windows public source update` (tag `v5.1.1-0.9.8-windows`).
+  `Blender-Nuru 5.1.1-0.9.8 Windows public source update` (tag `v5.1.1-0.9.8-windows`) and the
+  `Blender-Nuru 5.1.1-0.9.8 Linux public source update` (tag `v5.1.1-0.9.8-linux`).
 - Runtime and build-required source assets, including the macOS prebuilt
   libraries under `lib/macos_arm64/`, are stored directly in Git.
 - The Windows prebuilt libraries are not stored in this repository; they are fetched from the
@@ -23,7 +25,8 @@ git checkout v5.1.1-0.9.8
 git lfs install --local --skip-smudge
 ```
 
-Use `git checkout v5.1.1-0.9.8-windows` instead for the exact source of the Windows binary.
+Use `git checkout v5.1.1-0.9.8-windows` instead for the exact source of the Windows binary, or
+`git checkout v5.1.1-0.9.8-linux` for the exact source of the Linux binary.
 
 For branch-based development instead of the pinned source tags:
 
@@ -104,6 +107,32 @@ builds/dev/bin/Blender-Nuru.exe
 
 Optional: Cycles GPU kernels for NVIDIA need the CUDA Toolkit (`WITH_CYCLES_CUDA_BINARIES=ON`) and the OptiX SDK (`OPTIX_ROOT_DIR`). They are not required for Nuru hardware ray tracing in Eevee.
 
+## Linux Developer Build
+
+Prerequisites: GCC or Clang, CMake, Ninja, and Git on a 64-bit Linux distribution.
+
+Fetch the upstream Linux prebuilt libraries into the source tree:
+
+```sh
+cd Nuru
+git clone --depth 1 https://projects.blender.org/blender/lib-linux_x64.git lib/linux_x64
+```
+
+Configure and build. The Linux build uses the Vulkan backend only, so `WITH_OPENGL_BACKEND=OFF` is required:
+
+```sh
+cmake -S . -B builds/dev -G Ninja -C build_files/cmake/config/blender_developer.cmake -DWITH_OPENGL_BACKEND=OFF
+cmake --build builds/dev --target install
+```
+
+Launch the built application from the build tree:
+
+```sh
+builds/dev/bin/blender-nuru
+```
+
+Nuru hardware ray tracing at runtime needs an NVIDIA RTX GPU with the proprietary driver, 595 series or newer. Optional: Cycles GPU kernels for NVIDIA need the CUDA Toolkit (`WITH_CYCLES_CUDA_BINARIES=ON`) and the OptiX SDK headers (`OPTIX_ROOT_DIR`, for example from the redistributable `github.com/NVIDIA/optix-dev` checkout). They are not required for Nuru hardware ray tracing in Eevee.
+
 ## Developer Test Assets
 
 The `tests/files/**` corpus is for Blender developer validation parity. It is not required to build, install, or run the shipped Blender-Nuru binary and is intentionally excluded from the default public source snapshot. Normal developers can compile Blender-Nuru without these assets.
@@ -130,4 +159,4 @@ ctest --test-dir builds/macos-dev
 
 ## Binary Distribution
 
-Do not use Git LFS as the public distribution path for Blender-Nuru binaries. Publish binaries through GitHub Releases or another artifact host, and pin each binary release to the exact source tag or commit used to build it. The macOS and Windows binaries for this snapshot are published as GitHub Release assets on the `v5.1.1-0.9.8` release; the Windows binary corresponds to the `v5.1.1-0.9.8-windows` source tag.
+Do not use Git LFS as the public distribution path for Blender-Nuru binaries. Publish binaries through GitHub Releases or another artifact host, and pin each binary release to the exact source tag or commit used to build it. The macOS, Windows, and Linux binaries for this snapshot are published as GitHub Release assets on the `v5.1.1-0.9.8` release; the Windows binary corresponds to the `v5.1.1-0.9.8-windows` source tag and the Linux `.deb` and `.tar.gz` correspond to the `v5.1.1-0.9.8-linux` source tag.

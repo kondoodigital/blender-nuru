@@ -22,6 +22,7 @@
       <a href="nuru_dos_and_donts.html">Dos And Don'ts</a>
       <a href="nuru_macos.html">macOS</a>
       <a href="nuru_windows.html">Windows</a>
+      <a href="nuru_linux.html">Linux</a>
     </nav>
   </section>
 
@@ -30,7 +31,7 @@
   <h2>Platform</h2>
   <table>
     <tr><th>Item</th><th>Status</th></tr>
-    <tr><td>Packaged backends</td><td>Metal on macOS (<code>macos-metal</code>) and Vulkan on Windows (<code>windows-vulkan</code>)</td></tr>
+    <tr><td>Packaged backends</td><td>Metal on macOS (<code>macos-metal</code>), Vulkan on Windows (<code>windows-vulkan</code>), and Vulkan on Linux (<code>linux-vulkan</code>)</td></tr>
     <tr><td>Shared branch</td><td><code>nuru-core</code></td></tr>
     <tr><td>macOS branch</td><td><code>macos-metal</code></td></tr>
     <tr><td>Windows branch</td><td><code>windows-vulkan</code></td></tr>
@@ -40,6 +41,8 @@
     <tr><td>Unsupported Apple GPUs</td><td>M1 and M2 do not provide the required hardware RT support</td></tr>
     <tr><td>Recommended Windows hardware</td><td>NVIDIA GeForce RTX (RTX 20 series or newer) with a current driver</td></tr>
     <tr><td>Recommended Windows version</td><td>Windows 10 or 11, 64-bit; see <a href="nuru_windows.html">Nuru On Windows</a></td></tr>
+    <tr><td>Recommended Linux hardware</td><td>NVIDIA GeForce RTX (RTX 20 series or newer) with the 595-series or newer proprietary driver</td></tr>
+    <tr><td>Recommended Linux version</td><td>64-bit Linux; Ubuntu 22.04+ / Debian 12+ for the <code>.deb</code>; see <a href="nuru_linux.html">Nuru On Linux</a></td></tr>
   </table>
   <p>When Nuru is off, or when a specific Nuru feature is off, Blender falls back to the available Eevee behavior for that feature.</p>
 
@@ -52,7 +55,7 @@
     <tr><td><code>windows-vulkan</code></td><td>Windows Vulkan implementation branch, based on the shared core.</td></tr>
     <tr><td><code>linux-vulkan</code></td><td>Linux Vulkan implementation branch, based on the shared core.</td></tr>
   </table>
-  <p>Packaged builds are available for macOS (Metal) and Windows (Vulkan, NVIDIA RTX). The Linux Vulkan branch is a separate implementation track that inherits the same shared Nuru UI and renderer behavior from <code>nuru-core</code>.</p>
+  <p>Packaged builds are available for macOS (Metal), Windows (Vulkan, NVIDIA RTX), and Linux (Vulkan, NVIDIA RTX). All three inherit the same shared Nuru UI and renderer behavior from <code>nuru-core</code>.</p>
 
   <h2>Advantages</h2>
   <p>Nuru is designed for scenes where speed, interactivity, and animation stability matter.</p>

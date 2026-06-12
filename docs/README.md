@@ -13,6 +13,7 @@ These documents explain how to use Nuru in Blender Eevee. They focus on visible 
 | [Dos And Don'ts](nuru_dos_and_donts.html) | Practical guide: material recipes, the denoiser choice, and the global settings that matter most. |
 | [Nuru On macOS](nuru_macos.html) | macOS requirements, installation, Gatekeeper notes, and Apple Silicon support. |
 | [Nuru On Windows](nuru_windows.html) | Windows requirements, installation, SmartScreen notes, GPU denoising, and Cycles CUDA/OptiX support. |
+| [Nuru On Linux](nuru_linux.html) | Linux requirements, `.deb` and portable installation, GPU denoising, and Cycles CUDA/OptiX support. |
 
 ## Quick Path
 

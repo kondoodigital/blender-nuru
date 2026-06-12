@@ -224,8 +224,9 @@
     </article>
     <article class="feature">
       <h3>Linux</h3>
-      <p>Vulkan</p>
-      <p class="muted"><em>Coming soon</em></p>
+      <p>NVIDIA RTX &middot; Vulkan</p>
+      <p><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-linux-5.1.1-0.9.8.deb"><strong>Deb Package 5.1.1-0.9.8</strong></a><br>
+      <a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-linux-5.1.1-0.9.8.tar.gz">Portable Tar</a></p>
     </article>
   </div>
 
@@ -235,7 +236,7 @@
 
   <table>
     <tr><th>Area</th><th>Status</th></tr>
-    <tr><td>Packaged backends</td><td>Metal on macOS (<code>macos-metal</code>) and Vulkan on Windows (<code>windows-vulkan</code>)</td></tr>
+    <tr><td>Packaged backends</td><td>Metal on macOS (<code>macos-metal</code>), Vulkan on Windows (<code>windows-vulkan</code>), and Vulkan on Linux (<code>linux-vulkan</code>)</td></tr>
     <tr><td>Shared source branch</td><td><code>nuru-core</code></td></tr>
     <tr><td>macOS implementation branch</td><td><code>macos-metal</code></td></tr>
     <tr><td>Windows implementation branch</td><td><code>windows-vulkan</code></td></tr>
@@ -245,6 +246,8 @@
     <tr><td>Unsupported Apple GPUs</td><td>M1 and M2 do not provide the required hardware RT support</td></tr>
     <tr><td>Recommended Windows hardware</td><td>NVIDIA GeForce RTX (RTX 20 series or newer) with a current driver</td></tr>
     <tr><td>Recommended Windows version</td><td>Windows 10 or 11, 64-bit</td></tr>
+    <tr><td>Recommended Linux hardware</td><td>NVIDIA GeForce RTX (RTX 20 series or newer) with the 595-series or newer proprietary driver</td></tr>
+    <tr><td>Recommended Linux version</td><td>64-bit Linux; Ubuntu 22.04+ / Debian 12+ for the <code>.deb</code>, any current distribution for the portable archive</td></tr>
   </table>
 
   <h2 id="why-use-nuru">Why Use Nuru</h2>
@@ -309,7 +312,7 @@
     <tr><td><code>windows-vulkan</code></td><td>Windows Vulkan implementation branch, based on <code>nuru-core</code>.</td></tr>
     <tr><td><code>linux-vulkan</code></td><td>Linux Vulkan implementation branch, based on <code>nuru-core</code>.</td></tr>
   </table>
-  <p>Packaged builds are available for macOS (Metal) and Windows (Vulkan, NVIDIA RTX). Linux development takes shared behavior from <code>nuru-core</code> and keeps platform-specific Vulkan code on its own branch.</p>
+  <p>Packaged builds are available for macOS (Metal), Windows (Vulkan, NVIDIA RTX), and Linux (Vulkan, NVIDIA RTX).</p>
 
   <h2 id="current-limits">Current Limits</h2>
   <ul>
@@ -326,6 +329,9 @@
   <h2 id="windows-download-note">Windows Download Note</h2>
   <p>The Windows build is unsigned, so the first start may show <strong>"Windows protected your PC"</strong> (SmartScreen). Click <strong>More info</strong>, then <strong>Run anyway</strong>. Unzip the package anywhere and start <code>Blender-Nuru.exe</code>; see <a href="docs/nuru_windows.html">Nuru On Windows</a> for requirements and details.</p>
 
+  <h2 id="linux-download-note">Linux Download Note</h2>
+  <p>Install the <code>.deb</code> with <code>sudo apt install ./Blender-Nuru-linux-&lt;version&gt;.deb</code> (Ubuntu 22.04+ / Debian 12+), or unpack the portable <code>.tar.gz</code> anywhere and start <code>./blender-nuru</code>. Nuru hardware ray tracing needs the NVIDIA proprietary driver, 595 series or newer; see <a href="docs/nuru_linux.html">Nuru On Linux</a> for requirements and details.</p>
+
   <h2 id="documentation">Documentation</h2>
   <p>Start at <a href="docs/README.html">docs/README.html</a>.</p>
   <ul>
@@ -336,6 +342,7 @@
     <li><a href="docs/nuru_dos_and_donts.html">Dos And Don'ts</a></li>
     <li><a href="docs/nuru_macos.html">Nuru On macOS</a></li>
     <li><a href="docs/nuru_windows.html">Nuru On Windows</a></li>
+    <li><a href="docs/nuru_linux.html">Nuru On Linux</a></li>
   </ul>
 
   <h2>Upstream Blender Links</h2>

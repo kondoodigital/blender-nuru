@@ -8,7 +8,7 @@ Nuru is built for interactive real-time work. It is not a path tracer, and it is
 
 | Item | Status |
 | --- | --- |
-| Packaged backends | Metal on macOS (`macos-metal`) and Vulkan on Windows (`windows-vulkan`) |
+| Packaged backends | Metal on macOS (`macos-metal`), Vulkan on Windows (`windows-vulkan`), and Vulkan on Linux (`linux-vulkan`) |
 | Shared branch | `nuru-core` |
 | macOS branch | `macos-metal` |
 | Windows branch | `windows-vulkan` |
@@ -18,6 +18,8 @@ Nuru is built for interactive real-time work. It is not a path tracer, and it is
 | Unsupported Apple GPUs | M1 and M2 do not provide the required hardware RT support |
 | Recommended Windows hardware | NVIDIA GeForce RTX (RTX 20 series or newer) with a current driver |
 | Recommended Windows version | Windows 10 or 11, 64-bit; see [Nuru On Windows](nuru_windows.html) |
+| Recommended Linux hardware | NVIDIA GeForce RTX (RTX 20 series or newer) with the 595-series or newer proprietary driver |
+| Recommended Linux version | 64-bit Linux; Ubuntu 22.04+ / Debian 12+ for the `.deb`; see [Nuru On Linux](nuru_linux.html) |
 
 When Nuru is off, or when a specific Nuru feature is off, Blender falls back to the available Eevee behavior for that feature.
 
@@ -32,7 +34,7 @@ Nuru source is organized so shared behavior and platform-specific backend work d
 | `windows-vulkan` | Windows Vulkan implementation branch, based on the shared core. |
 | `linux-vulkan` | Linux Vulkan implementation branch, based on the shared core. |
 
-Packaged builds are available for macOS (Metal) and Windows (Vulkan, NVIDIA RTX). The Linux Vulkan branch is a separate implementation track that inherits the same shared Nuru UI and renderer behavior from `nuru-core`.
+Packaged builds are available for macOS (Metal), Windows (Vulkan, NVIDIA RTX), and Linux (Vulkan, NVIDIA RTX). All three inherit the same shared Nuru UI and renderer behavior from `nuru-core`.
 
 ## Advantages
 
