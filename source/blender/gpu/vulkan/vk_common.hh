@@ -25,6 +25,8 @@
 #endif
 #include "vk_mem_alloc.h"
 
+#include "BLI_math_vector_types.hh"
+
 #include "GPU_index_buffer.hh"
 #include "GPU_state.hh"
 #include "gpu_query.hh"
@@ -34,6 +36,14 @@
 namespace blender::gpu {
 
 using TimelineValue = uint64_t;
+
+/**
+ * Nuru: wedge diagnostic, inert by default. When `BLENDER_VULKAN_CHECKPOINTS=1` is set and the
+ * device supports `VK_NV_device_diagnostic_checkpoints`, a checkpoint marker is recorded before
+ * every render-graph node and the last started/completed markers are dumped on `DEVICE_LOST` so
+ * the exact wedging pass can be named.
+ */
+bool vk_diagnostic_checkpoints_requested();
 
 /**
  * Based on the usage of an Image View a different image view type should be created.
@@ -83,6 +93,11 @@ VkImageViewType to_vk_image_view_type(const GPUTextureType type,
                                       VKImageViewArrayed arrayed);
 VkImageType to_vk_image_type(const GPUTextureType type);
 VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const void *data);
+/**
+ * Convert a format-agnostic double4 clear value (new GPU module clear API) into the typed
+ * VkClearColorValue channel union expected by the attachment/image data format.
+ */
+VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const double4 &value);
 VkIndexType to_vk_index_type(const GPUIndexBufType index_type);
 VkPrimitiveTopology to_vk_primitive_topology(const GPUPrimType prim_type);
 VkCullModeFlags to_vk_cull_mode_flags(const GPUFaceCullTest cull_test);

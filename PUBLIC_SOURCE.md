@@ -2,10 +2,14 @@
 
 This repository publishes the complete corresponding source for the Blender-Nuru public source snapshot.
 
-- Exact Nuru source commit: `be4bb28fa8ba1855f02d67018c3fe63b9b9b67e1`
-- Public source snapshot: `Blender-Nuru 5.1.1-0.9.8 public source snapshot`
+- Exact Nuru source commit (macOS binary): `be4bb28fa8ba1855f02d67018c3fe63b9b9b67e1`
+- Exact Nuru source commit (Windows binary): `01f255f7716930412b6e8bfd2c5f574d94d69c13`
+- Public source snapshot: `Blender-Nuru 5.1.1-0.9.8 public source snapshot` plus the
+  `Blender-Nuru 5.1.1-0.9.8 Windows public source update` (tag `v5.1.1-0.9.8-windows`).
 - Runtime and build-required source assets, including the macOS prebuilt
   libraries under `lib/macos_arm64/`, are stored directly in Git.
+- The Windows prebuilt libraries are not stored in this repository; they are fetched from the
+  upstream Blender mirror during setup (see Windows Developer Build below).
 - No Git LFS objects are required for the normal public clone, build, install, or runtime path.
 - The upstream Blender developer test corpus under `tests/files/**` is not part of the default public source snapshot.
 - The `images/` folder, including the Nuru logo PNG files, is stored as normal Git blobs.
@@ -19,7 +23,9 @@ git checkout v5.1.1-0.9.8
 git lfs install --local --skip-smudge
 ```
 
-For branch-based development instead of the pinned source tag:
+Use `git checkout v5.1.1-0.9.8-windows` instead for the exact source of the Windows binary.
+
+For branch-based development instead of the pinned source tags:
 
 ```sh
 GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/kondoodigital/blender-nuru.git Nuru
@@ -72,6 +78,32 @@ cmake -S . -B builds/macos-dev -G Ninja -C build_files/cmake/config/blender_deve
 cmake --build builds/macos-dev --target install
 ```
 
+## Windows Developer Build
+
+Prerequisites: Visual Studio 2022 Build Tools (MSVC v143 and a Windows 10/11 SDK), CMake, Ninja, and Git.
+
+Fetch the upstream Windows prebuilt libraries into the source tree:
+
+```sh
+cd Nuru
+git clone --depth 1 https://projects.blender.org/blender/lib-windows_x64.git lib/windows_x64
+```
+
+Configure and build from a Visual Studio x64 developer prompt. The Windows build uses the Vulkan backend only, so `WITH_OPENGL_BACKEND=OFF` is required:
+
+```sh
+cmake -S . -B builds/dev -G Ninja -C build_files/cmake/config/blender_developer.cmake -DWITH_OPENGL_BACKEND=OFF
+cmake --build builds/dev --target install
+```
+
+Launch the built application from the build tree:
+
+```sh
+builds/dev/bin/Blender-Nuru.exe
+```
+
+Optional: Cycles GPU kernels for NVIDIA need the CUDA Toolkit (`WITH_CYCLES_CUDA_BINARIES=ON`) and the OptiX SDK (`OPTIX_ROOT_DIR`). They are not required for Nuru hardware ray tracing in Eevee.
+
 ## Developer Test Assets
 
 The `tests/files/**` corpus is for Blender developer validation parity. It is not required to build, install, or run the shipped Blender-Nuru binary and is intentionally excluded from the default public source snapshot. Normal developers can compile Blender-Nuru without these assets.
@@ -98,4 +130,4 @@ ctest --test-dir builds/macos-dev
 
 ## Binary Distribution
 
-Do not use Git LFS as the public distribution path for Blender-Nuru binaries. Publish binaries through GitHub Releases or another artifact host, and pin each binary release to the exact source tag or commit used to build it. The macOS binary for this snapshot is published as a GitHub Release asset on the `v5.1.1-0.9.8` release.
+Do not use Git LFS as the public distribution path for Blender-Nuru binaries. Publish binaries through GitHub Releases or another artifact host, and pin each binary release to the exact source tag or commit used to build it. The macOS and Windows binaries for this snapshot are published as GitHub Release assets on the `v5.1.1-0.9.8` release; the Windows binary corresponds to the `v5.1.1-0.9.8-windows` source tag.

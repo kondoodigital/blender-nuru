@@ -92,6 +92,10 @@ template<int Offset> class BindSpaceImages {
     if (binding >= Offset) {
       binding -= Offset;
     }
+    if (binding >= bound_resources.size()) {
+      /* Shaders can declare image slots that were never bound; treat them as unbound. */
+      return nullptr;
+    }
     return bound_resources[binding];
   }
 

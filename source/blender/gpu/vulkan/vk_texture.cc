@@ -102,7 +102,7 @@ void VKTexture::copy_to(VKTexture &dst_texture, VkImageAspectFlags vk_image_aspe
   dst_texture.has_data_ = true;
 }
 
-void VKTexture::copy_to(Texture *tex)
+void VKTexture::copy_to(Texture *tex, IndexRange mip_levels)
 {
   VKTexture *dst = unwrap(tex);
   VKTexture *src = this;
@@ -112,45 +112,39 @@ void VKTexture::copy_to(Texture *tex)
   BLI_assert(!is_texture_view());
   UNUSED_VARS_NDEBUG(src);
 
-  copy_to(*dst, to_vk_image_aspect_flag_bits(device_format_));
+  const VkImageAspectFlags vk_image_aspect = to_vk_image_aspect_flag_bits(device_format_);
+  VKContext &context = *VKContext::get();
+  for (const int mip_level : mip_levels) {
+    render_graph::VKCopyImageNode::CreateInfo copy_image = {};
+    copy_image.node_data.src_image = vk_image_handle();
+    copy_image.node_data.dst_image = dst->vk_image_handle();
+    copy_image.node_data.region.srcSubresource.aspectMask = vk_image_aspect;
+    copy_image.node_data.region.srcSubresource.mipLevel = mip_level;
+    copy_image.node_data.region.srcSubresource.layerCount = vk_layer_count(1);
+    copy_image.node_data.region.dstSubresource.aspectMask = vk_image_aspect;
+    copy_image.node_data.region.dstSubresource.mipLevel = mip_level;
+    copy_image.node_data.region.dstSubresource.layerCount = vk_layer_count(1);
+    copy_image.node_data.region.extent = vk_extent_3d(mip_level);
+    copy_image.vk_image_aspect = to_vk_image_aspect_flag_bits(device_format_get());
+
+    context.render_graph().add_node(copy_image);
+  }
+
+  dst->has_data_ = true;
 }
 
-void VKTexture::clear(eGPUDataFormat format, const void *data)
+void VKTexture::clear(const double4 data)
 {
   /* Relay depth/stencil clearing to clear_depth_stencil. This branch can be used by pyGPU. */
   if (bool(format_flag_ & (GPU_FORMAT_DEPTH | GPU_FORMAT_STENCIL))) {
-    float clear_depth = 1.0f;
-    switch (format) {
-      case GPU_DATA_FLOAT:
-        clear_depth = *static_cast<const float *>(data);
-        break;
-
-      case GPU_DATA_UINT_24_8_DEPRECATED:
-        convert_host_to_device(&clear_depth,
-                               data,
-                               1,
-                               format,
-                               TextureFormat::SFLOAT_32_DEPTH_UINT_8,
-                               TextureFormat::SFLOAT_32_DEPTH_UINT_8);
-        break;
-
-      case GPU_DATA_HALF_FLOAT:
-      case GPU_DATA_INT:
-      case GPU_DATA_UINT:
-      case GPU_DATA_UBYTE:
-      case GPU_DATA_10_11_11_REV:
-      case GPU_DATA_2_10_10_10_REV:
-        /* Can only clear depth/stencil textures with float/uin24_8 data format. Texture will be
-         * cleared to 1.0 depth. */
-        BLI_assert_unreachable();
-        break;
-    }
-    clear_depth_stencil(GPU_DEPTH_BIT | GPU_STENCIL_BIT, clear_depth, 0u, std::nullopt);
+    clear_depth_stencil(
+        GPU_DEPTH_BIT | GPU_STENCIL_BIT, float(data.x), uint(data.y), std::nullopt);
     return;
   }
 
   render_graph::VKClearColorImageNode::CreateInfo clear_color_image = {};
-  clear_color_image.vk_clear_color_value = to_vk_clear_color_value(format, data);
+  clear_color_image.vk_clear_color_value = to_vk_clear_color_value(
+      to_texture_data_format(device_format_get()), data);
   clear_color_image.vk_image = vk_image_handle();
   clear_color_image.vk_image_subresource_range.aspectMask = to_vk_image_aspect_flag_bits(
       device_format_);

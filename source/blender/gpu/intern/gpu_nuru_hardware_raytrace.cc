@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+/* Nuru: Backend-neutral hardware ray-tracing API dispatcher. */
+
 /** \file
  * \ingroup gpu
  */
@@ -11,6 +13,9 @@
 
 #ifdef WITH_METAL_BACKEND
 #  include "metal/mtl_nuru_raytrace_acceleration.hh"
+#endif
+#ifdef WITH_VULKAN_BACKEND
+#  include "vulkan/vk_nuru_raytrace_acceleration.hh"
 #endif
 
 namespace blender {
@@ -25,6 +30,11 @@ GPUHardwareRaytraceScene *GPU_hardware_raytrace_scene_build(Span<GPUHardwareRayt
 #ifdef WITH_METAL_BACKEND
   if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_scene_build(entries, r_stats);
+  }
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_scene_build(entries, r_stats);
   }
 #endif
 
@@ -44,10 +54,14 @@ bool GPU_hardware_raytrace_scene_update(GPUHardwareRaytraceScene *scene,
   if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_scene_update(scene, entries, update_params, r_stats);
   }
-#else
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_scene_update(scene, entries, update_params, r_stats);
+  }
+#endif
   (void)scene;
   (void)entries;
-#endif
   (void)update_params;
   return false;
 }
@@ -59,10 +73,14 @@ bool GPU_hardware_raytrace_scene_trace(GPUHardwareRaytraceScene *scene,
   if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_scene_trace(scene, params);
   }
-#else
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_scene_trace(scene, params);
+  }
+#endif
   (void)scene;
   (void)params;
-#endif
   return false;
 }
 
@@ -73,10 +91,14 @@ bool GPU_hardware_raytrace_scene_trace_directional_shadow(
   if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_scene_trace_directional_shadow(scene, params);
   }
-#else
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_scene_trace_directional_shadow(scene, params);
+  }
+#endif
   (void)scene;
   (void)params;
-#endif
   return false;
 }
 
@@ -87,10 +109,14 @@ bool GPU_hardware_raytrace_scene_trace_directional_hit_shadow(
   if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_scene_trace_directional_hit_shadow(scene, params);
   }
-#else
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_scene_trace_directional_hit_shadow(scene, params);
+  }
+#endif
   (void)scene;
   (void)params;
-#endif
   return false;
 }
 
@@ -101,10 +127,14 @@ bool GPU_hardware_raytrace_scene_trace_local_shadow(GPUHardwareRaytraceScene *sc
   if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_scene_trace_local_shadow(scene, params);
   }
-#else
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_scene_trace_local_shadow(scene, params);
+  }
+#endif
   (void)scene;
   (void)params;
-#endif
   return false;
 }
 
@@ -115,10 +145,14 @@ bool GPU_hardware_raytrace_scene_trace_local_hit_shadow(
   if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_scene_trace_local_hit_shadow(scene, params);
   }
-#else
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_scene_trace_local_hit_shadow(scene, params);
+  }
+#endif
   (void)scene;
   (void)params;
-#endif
   return false;
 }
 
@@ -128,9 +162,13 @@ bool GPU_hardware_raytrace_scene_shadow_batch_begin(GPUHardwareRaytraceScene *sc
   if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_scene_shadow_batch_begin(scene);
   }
-#else
-  (void)scene;
 #endif
+#ifdef WITH_VULKAN_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_scene_shadow_batch_begin(scene);
+  }
+#endif
+  (void)scene;
   return false;
 }
 
@@ -140,9 +178,13 @@ bool GPU_hardware_raytrace_scene_shadow_batch_end(GPUHardwareRaytraceScene *scen
   if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_scene_shadow_batch_end(scene);
   }
-#else
-  (void)scene;
 #endif
+#ifdef WITH_VULKAN_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_scene_shadow_batch_end(scene);
+  }
+#endif
+  (void)scene;
   return false;
 }
 
@@ -153,24 +195,33 @@ bool GPU_hardware_raytrace_scene_trace_environment_visibility(
   if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_scene_trace_environment_visibility(scene, params);
   }
-#else
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_scene_trace_environment_visibility(scene, params);
+  }
+#endif
   (void)scene;
   (void)params;
-#endif
   return false;
 }
 
 bool GPU_hardware_raytrace_scene_trace_hit_environment_visibility(
-    GPUHardwareRaytraceScene *scene, const GPUHardwareRaytraceHitEnvironmentVisibilityParams &params)
+    GPUHardwareRaytraceScene *scene,
+    const GPUHardwareRaytraceHitEnvironmentVisibilityParams &params)
 {
 #ifdef WITH_METAL_BACKEND
   if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_scene_trace_hit_environment_visibility(scene, params);
   }
-#else
+#endif
+#ifdef WITH_VULKAN_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_scene_trace_hit_environment_visibility(scene, params);
+  }
+#endif
   (void)scene;
   (void)params;
-#endif
   return false;
 }
 
@@ -180,21 +231,31 @@ bool GPU_hardware_raytrace_denoise_oidn(const GPUHardwareRaytraceOIDNDenoisePara
   if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
     return gpu::metal::raytrace_denoise_oidn(params);
   }
-#else
-  (void)params;
 #endif
+#ifdef WITH_VULKAN_BACKEND
+  if (GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    return gpu::vulkan::raytrace_denoise_oidn(params);
+  }
+#endif
+  (void)params;
   return false;
 }
 
 void GPU_hardware_raytrace_scene_free(GPUHardwareRaytraceScene *scene)
 {
 #ifdef WITH_METAL_BACKEND
-  if (scene != nullptr) {
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_METAL) {
     gpu::metal::raytrace_scene_free(scene);
+    return;
   }
-#else
-  (void)scene;
 #endif
+#ifdef WITH_VULKAN_BACKEND
+  if (scene != nullptr && GPU_backend_get_type() == GPU_BACKEND_VULKAN) {
+    gpu::vulkan::raytrace_scene_free(scene);
+    return;
+  }
+#endif
+  (void)scene;
 }
 
 }  // namespace blender

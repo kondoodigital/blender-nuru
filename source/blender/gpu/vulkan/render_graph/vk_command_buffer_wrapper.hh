@@ -150,6 +150,10 @@ class VKCommandBufferInterface {
   /* VK_EXT_debug_utils */
   virtual void begin_debug_utils_label(const VkDebugUtilsLabelEXT *vk_debug_utils_label) = 0;
   virtual void end_debug_utils_label() = 0;
+  /* Nuru: VK_NV_device_diagnostic_checkpoints (wedge diagnostic, env-gated). The marker must
+   * point to storage that stays valid until after a potential device-lost dump. Default is a
+   * no-op so test command buffers are unaffected. */
+  virtual void set_checkpoint_marker(const char * /*marker*/) {}
 };
 
 class VKCommandBufferWrapper : public VKCommandBufferInterface {
@@ -277,6 +281,7 @@ class VKCommandBufferWrapper : public VKCommandBufferInterface {
   void end_rendering() override;
   void begin_debug_utils_label(const VkDebugUtilsLabelEXT *vk_debug_utils_label) override;
   void end_debug_utils_label() override;
+  void set_checkpoint_marker(const char *marker) override;
 };
 }  // namespace gpu::render_graph
 

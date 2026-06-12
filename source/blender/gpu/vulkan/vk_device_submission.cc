@@ -6,8 +6,10 @@
  * \ingroup gpu
  */
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
 #include <thread>
 
 #include "BLI_mutex.hh"
@@ -107,6 +109,39 @@ TimelineValue VKDevice::render_graph_submit(render_graph::VKRenderGraph *render_
   return timeline;
 }
 
+void VKDevice::wait_for_submission_timeline(TimelineValue timeline)
+{
+  if (timeline == 0 ||
+      queue_submitted_timeline_.load(std::memory_order_acquire) >= timeline)
+  {
+    return;
+  }
+  std::unique_lock lock(queue_submitted_mutex_);
+  queue_submitted_condition_.wait(lock, [&] {
+    return queue_submitted_timeline_.load(std::memory_order_acquire) >= timeline;
+  });
+}
+
+TimelineValue VKDevice::external_timeline_chain_acquire(TimelineValue *r_wait_value)
+{
+  std::scoped_lock lock(orphaned_data.mutex_get());
+  *r_wait_value = timeline_value_;
+  const TimelineValue signal_value = ++timeline_value_;
+  orphaned_data.timeline_ = signal_value;
+  return signal_value;
+}
+
+void VKDevice::external_timeline_chain_submitted(TimelineValue value)
+{
+  std::scoped_lock lock(queue_submitted_mutex_);
+  /* Keep the published stream monotonic: the runner thread may publish a later graph value
+   * before this external value lands. */
+  if (value > queue_submitted_timeline_.load(std::memory_order_acquire)) {
+    queue_submitted_timeline_.store(value, std::memory_order_release);
+  }
+  queue_submitted_condition_.notify_all();
+}
+
 void VKDevice::wait_for_timeline(TimelineValue timeline)
 {
   if (timeline == 0) {
@@ -114,11 +149,75 @@ void VKDevice::wait_for_timeline(TimelineValue timeline)
   }
   VkSemaphoreWaitInfo vk_semaphore_wait_info = {
       VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO, nullptr, 0, 1, &vk_timeline_semaphore_, &timeline};
-  VkResult wait_result = vkWaitSemaphores(vk_device_, &vk_semaphore_wait_info, UINT64_MAX);
+  /* Nuru: wait in finite slices instead of a single infinite wait. On an Xid-class GPU wedge
+   * the NVIDIA driver can poll forever without returning VK_ERROR_DEVICE_LOST, which silenced
+   * the checkpoint diagnostic. Dump the checkpoints on the first long stall (the queue state
+   * does not change once wedged), then keep waiting so legitimate long GPU work still
+   * completes. */
+  constexpr uint64_t wait_slice_ns = 10ull * 1000ull * 1000ull * 1000ull;
+  VkResult wait_result = VK_TIMEOUT;
+  bool stall_reported = false;
+  while ((wait_result = vkWaitSemaphores(vk_device_, &vk_semaphore_wait_info, wait_slice_ns)) ==
+         VK_TIMEOUT)
+  {
+    if (!stall_reported) {
+      stall_reported = true;
+      CLOG_ERROR(&LOG,
+                 "Vulkan: timeline wait exceeded %llu ms (value %llu); possible GPU wedge",
+                 (unsigned long long)(wait_slice_ns / 1000000ull),
+                 (unsigned long long)timeline);
+      diagnostic_checkpoints_dump();
+    }
+  }
   if (wait_result != VK_SUCCESS) {
     CLOG_ERROR(
         &LOG, "Vulkan: failed to wait for synchronization timeline [%s]", to_string(wait_result));
+    if (wait_result == VK_ERROR_DEVICE_LOST) {
+      diagnostic_checkpoints_dump();
+    }
   }
+}
+
+void VKDevice::diagnostic_checkpoints_dump()
+{
+  /* Nuru: VK_NV_device_diagnostic_checkpoints wedge diagnostic (BLENDER_VULKAN_CHECKPOINTS=1).
+   * Reports the last checkpoint markers that started/completed execution on the queue, naming
+   * the render-graph node where the GPU wedged. Only the first caller dumps; afterwards the
+   * queue state does not change anymore. */
+  if (!extensions_.diagnostic_checkpoints || functions.vkGetQueueCheckpointData == nullptr) {
+    return;
+  }
+  static std::atomic<bool> dumped = false;
+  if (dumped.exchange(true)) {
+    return;
+  }
+
+  uint32_t count = 0;
+  functions.vkGetQueueCheckpointData(vk_queue_, &count, nullptr);
+  Array<VkCheckpointDataNV> checkpoints(count);
+  for (VkCheckpointDataNV &data : checkpoints) {
+    data = {};
+    data.sType = VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV;
+  }
+  functions.vkGetQueueCheckpointData(vk_queue_, &count, checkpoints.data());
+
+  fprintf(stderr, "[NURU_VK_CHECKPOINTS] device-lost checkpoint dump, %u entries:\n", count);
+  for (const VkCheckpointDataNV &data : checkpoints.as_span().take_front(count)) {
+    const char *stage_name = "OTHER";
+    if (data.stage == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT) {
+      stage_name = "LAST_STARTED";
+    }
+    else if (data.stage == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT) {
+      stage_name = "LAST_COMPLETED";
+    }
+    fprintf(stderr,
+            "[NURU_VK_CHECKPOINTS]   stage=0x%08x (%s) marker=%s\n",
+            uint32_t(data.stage),
+            stage_name,
+            data.pCheckpointMarker ? static_cast<const char *>(data.pCheckpointMarker) :
+                                     "(none)");
+  }
+  fflush(stderr);
 }
 
 void VKDevice::wait_queue_idle()
@@ -254,6 +353,12 @@ void VKDevice::submission_runner(TaskPool *__restrict pool, void *task_data)
       {
         std::scoped_lock lock_queue(*device->queue_mutex_);
         vkQueueSubmit(device->vk_queue_, 1, &vk_submit_info, submit_task->signal_fence);
+      }
+      {
+        /* Nuru: publish queue-submission progress for external direct submitters. */
+        std::scoped_lock lock(device->queue_submitted_mutex_);
+        device->queue_submitted_timeline_.store(submit_task->timeline, std::memory_order_release);
+        device->queue_submitted_condition_.notify_all();
       }
       if (submit_task->wait_for_submission != nullptr) {
         std::unique_lock<Mutex> lock(submit_task->wait_for_submission->is_submitted_mutex);

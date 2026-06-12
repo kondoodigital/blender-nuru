@@ -267,6 +267,7 @@ set(VULKAN_SRC
   vulkan/vk_index_buffer.cc
   vulkan/vk_memory_layout.cc
   vulkan/vk_memory_pool.cc
+  vulkan/vk_nuru_raytrace_acceleration.cc
   vulkan/vk_pipeline_pool.cc
   vulkan/vk_pixel_buffer.cc
   vulkan/vk_push_constants.cc
@@ -319,6 +320,8 @@ set(VULKAN_SRC
   vulkan/vk_memory.hh
   vulkan/vk_memory_layout.hh
   vulkan/vk_memory_pool.hh
+  vulkan/vk_nuru_raytrace_acceleration.hh
+  vulkan/vk_nuru_raytrace_kernels.hh
   vulkan/vk_pipeline_pool.hh
   vulkan/vk_pixel_buffer.hh
   vulkan/vk_push_constants.hh
@@ -804,6 +807,19 @@ set(VULKAN_BACKEND_GLSL_SRC
   vulkan/shaders/vk_backbuffer_blit_comp.glsl
 )
 
+# Nuru: Vulkan hardware ray-tracing kernels (ray-query GLSL, compiled at runtime with shaderc).
+set(VULKAN_NURU_KERNELS_SRC
+  vulkan/kernels/vk_nuru_trace_override.glsl
+  vulkan/kernels/vk_nuru_directional_shadow.glsl
+  vulkan/kernels/vk_nuru_directional_hit_shadow.glsl
+  vulkan/kernels/vk_nuru_environment_visibility.glsl
+  vulkan/kernels/vk_nuru_hit_environment_visibility.glsl
+  vulkan/kernels/vk_nuru_local_shadow.glsl
+  vulkan/kernels/vk_nuru_local_hit_shadow.glsl
+  vulkan/kernels/vk_nuru_oidn_pack.glsl
+  vulkan/kernels/vk_nuru_oidn_unpack.glsl
+)
+
 if(WITH_GTESTS)
   if(WITH_GPU_BACKEND_TESTS)
     list(APPEND GLSL_SRC ${GLSL_SRC_TEST})
@@ -821,6 +837,13 @@ endif()
 
 if(WITH_VULKAN_BACKEND)
   list(APPEND GLSL_SRC ${VULKAN_BACKEND_GLSL_SRC})
+
+  # Nuru: hardware ray-tracing kernels are compiled at runtime with shaderc and embedded as
+  # plain text (they use ray-query extensions outside the create-info shader system).
+  set(VULKAN_NURU_KERNELS_C "")
+  foreach(NURU_KERNEL_FILE ${VULKAN_NURU_KERNELS_SRC})
+    data_to_c_simple(${NURU_KERNEL_FILE} VULKAN_NURU_KERNELS_C)
+  endforeach()
 endif()
 
 set(GLSL_INC
@@ -844,6 +867,9 @@ set(SHADER_C "")
 list(APPEND SHADER_C ${GLSL_C})
 if(WITH_METAL_BACKEND)
   list(APPEND SHADER_C ${MSL_C})
+endif()
+if(WITH_VULKAN_BACKEND)
+  list(APPEND SHADER_C ${VULKAN_NURU_KERNELS_C})
 endif()
 
 blender_add_lib(bf_gpu_shaders "${SHADER_C}" "" "" "")

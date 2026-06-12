@@ -1,0 +1,80 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Kondoo Digital GmbH -->
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuru On Windows</title>
+  <link rel="stylesheet" href="nuru_docs.css">
+</head>
+<body>
+<main>
+  <section class="hero">
+    <p class="eyebrow">Nuru Documentation</p>
+    <h1>Nuru On Windows</h1>
+    <p class="lede">Blender-Nuru for Windows runs Eevee on the Vulkan graphics backend with Nuru hardware ray tracing on NVIDIA RTX GPUs. This page covers requirements, installation, and Windows-specific notes.</p>
+    <nav class="nav" aria-label="Documentation navigation">
+      <a href="README.html">Docs Home</a>
+      <a href="nuru_overview.html">Overview</a>
+      <a href="nuru_ui_reference.html">UI Reference</a>
+      <a href="nuru_shadows_and_lights.html">Shadows And Lights</a>
+      <a href="nuru_materials.html">Materials</a>
+    </nav>
+  </section>
+
+  <h2>Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Operating system</td><td>Windows 10 or Windows 11, 64-bit</td></tr>
+    <tr><td>GPU</td><td>NVIDIA GeForce RTX class with hardware ray tracing (RTX 20 series or newer); validated on RTX 50 series</td></tr>
+    <tr><td>GPU driver</td><td>A current NVIDIA Game Ready or Studio driver</td></tr>
+    <tr><td>Graphics backend</td><td>Vulkan, built into the package; no extra setup is needed</td></tr>
+    <tr><td>Other GPUs</td><td>AMD and Intel GPUs are not yet validated for Nuru hardware ray tracing</td></tr>
+  </table>
+
+  <h2>Install</h2>
+  <ol>
+    <li>Download the Windows zip from the <a href="https://github.com/kondoodigital/blender-nuru/releases">Releases page</a>.</li>
+    <li>Unzip it anywhere you like, for example <code>C:\Programs\Blender-Nuru</code>. No installer is needed.</li>
+    <li>Start <strong><code>Blender-Nuru.exe</code></strong>. A console window opens alongside the app and shows log output. To start without the console window, use <code>Blender-Nuru-launcher.exe</code> instead.</li>
+  </ol>
+
+  <h3>Windows SmartScreen</h3>
+  <p class="note">The build is not code-signed, so the first start may show <strong>"Windows protected your PC"</strong>. Click <strong>More info</strong>, then <strong>Run anyway</strong>.</p>
+
+  <h2>Enable Nuru</h2>
+  <ol>
+    <li>Open <strong>Render Properties</strong>.</li>
+    <li>Set the render engine to <strong>Eevee</strong>.</li>
+    <li>Enable <strong>Raytracing</strong>.</li>
+    <li>Set <strong>Method</strong> to <strong>Nuru Raytracing</strong>.</li>
+    <li>Use <strong>Quick Settings</strong> to enable the RT features you need.</li>
+  </ol>
+  <p>The Nuru <strong>Quick Settings</strong> appear when the active GPU supports the Nuru backend. If they stay hidden, update the NVIDIA driver and confirm the RTX GPU is the active render device.</p>
+
+  <h2>GPU Denoising</h2>
+  <p>Denoising on Windows runs on the GPU, and the denoiser shares its working memory directly with the renderer (zero-copy). The <strong>Denoise</strong> option is fast at every trace resolution and is safe to keep enabled for interactive work and final renders.</p>
+
+  <h2>Cycles On Windows</h2>
+  <p>This package also includes Cycles GPU kernels for NVIDIA <strong>CUDA</strong> and <strong>OptiX</strong>. Enable them under <strong>Edit &gt; Preferences &gt; System &gt; Cycles Render Devices</strong>.</p>
+
+  <h2>Troubleshooting</h2>
+  <table>
+    <tr><th>Symptom</th><th>What to do</th></tr>
+    <tr><td>Nuru Quick Settings do not appear</td><td>Update the NVIDIA driver and confirm an RTX GPU is active.</td></tr>
+    <tr><td>The app does not start, or reports a device error</td><td>Update the NVIDIA driver and install pending Windows updates, then try again.</td></tr>
+    <tr><td>The first rendered frame is slow</td><td>Shaders and pipelines warm up on the first render after installation; later frames are much faster.</td></tr>
+    <tr><td>SmartScreen blocks the app</td><td>Click <strong>More info</strong>, then <strong>Run anyway</strong>. The build is unsigned.</td></tr>
+  </table>
+
+  <h2>Related</h2>
+  <ul>
+    <li><a href="nuru_overview.html">Nuru Overview</a></li>
+    <li><a href="nuru_ui_reference.html">UI Reference</a></li>
+    <li><a href="nuru_shadows_and_lights.html">Shadows And Lights</a></li>
+    <li><a href="nuru_materials.html">Materials</a></li>
+  </ul>
+</main>
+</body>
+</html>

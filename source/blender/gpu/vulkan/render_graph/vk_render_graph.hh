@@ -160,7 +160,9 @@ class VKRenderGraph : public NonCopyable {
     BLI_assert(node_links.outputs.is_empty());
     node.build_links<NodeInfo>(resources_, node_links, create_info);
 
-    if (G.debug & G_DEBUG_GPU) {
+    /* Nuru: also track debug groups when the checkpoint wedge diagnostic is active so the
+     * checkpoint markers can name the originating pass without enabling --debug-gpu. */
+    if ((G.debug & G_DEBUG_GPU) || vk_diagnostic_checkpoints_requested()) {
       if (!debug_.group_used) {
         debug_.group_used = true;
         debug_.used_groups.append(debug_.group_stack);

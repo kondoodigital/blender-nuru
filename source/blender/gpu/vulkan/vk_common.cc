@@ -12,6 +12,16 @@
 #include "vk_common.hh"
 
 namespace blender::gpu {
+
+bool vk_diagnostic_checkpoints_requested()
+{
+  static const bool requested = []() {
+    const char *env = getenv("BLENDER_VULKAN_CHECKPOINTS");
+    return env != nullptr && env[0] == '1';
+  }();
+  return requested;
+}
+
 VkImageAspectFlags to_vk_image_aspect_flag_bits(const TextureFormat format)
 {
   switch (format) {
@@ -644,6 +654,34 @@ VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const voi
     }
     case GPU_DATA_UINT_24_8_DEPRECATED: {
       BLI_assert_unreachable();
+      break;
+    }
+  }
+  return result;
+}
+
+VkClearColorValue to_vk_clear_color_value(const eGPUDataFormat format, const double4 &value)
+{
+  /* Convert from double per channel directly so large integer clear values (e.g. 0xFFFFFFFF on
+   * UINT formats) don't lose precision through a float round-trip. */
+  VkClearColorValue result = {{0.0f}};
+  switch (format) {
+    case GPU_DATA_INT: {
+      for (int i = 0; i < 4; i++) {
+        result.int32[i] = int32_t(value[i]);
+      }
+      break;
+    }
+    case GPU_DATA_UINT: {
+      for (int i = 0; i < 4; i++) {
+        result.uint32[i] = uint32_t(value[i]);
+      }
+      break;
+    }
+    default: {
+      for (int i = 0; i < 4; i++) {
+        result.float32[i] = float(value[i]);
+      }
       break;
     }
   }

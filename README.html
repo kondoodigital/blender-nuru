@@ -195,6 +195,7 @@
     <p class="meaning"><em>Nuru</em> means <strong>light</strong> in Swahili.</p>
     <p class="muted">A Blender branch by <strong>Kondoo Digital GmbH</strong>.</p>
     <p>
+      <a href="#downloads">Downloads</a> |
       <a href="#what-nuru-is">What Nuru Is</a> |
       <a href="#why-use-nuru">Why Use Nuru</a> |
       <a href="#how-to-use-nuru">How To Use</a> |
@@ -205,13 +206,32 @@
     </p>
   </section>
 
+  <h2 id="downloads">Downloads</h2>
+  <div class="features">
+    <article class="feature">
+      <h3>Windows</h3>
+      <p>NVIDIA RTX &middot; Vulkan</p>
+      <p><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-windows-5.1.1-0.9.8.zip"><strong>Download 5.1.1-0.9.8</strong></a></p>
+    </article>
+    <article class="feature">
+      <h3>macOS</h3>
+      <p>Apple Silicon M3+ &middot; Metal</p>
+      <p><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-macos-5.1.1-0.9.8.zip"><strong>Download 5.1.1-0.9.8</strong></a></p>
+    </article>
+    <article class="feature">
+      <h3>Linux</h3>
+      <p>Vulkan</p>
+      <p class="muted"><em>Coming soon</em></p>
+    </article>
+  </div>
+
   <h2 id="what-nuru-is">What Nuru Is</h2>
   <p><strong>Nuru</strong> adds a <strong>Nuru Raytracing</strong> method to Blender Eevee. It lets artists choose which parts of the render use hardware ray tracing: global illumination, shadows, reflections, and refractions.</p>
   <p>Nuru is a hybrid real-time renderer. It is designed for interactive viewport feedback in Eevee, not as a replacement for Cycles.</p>
 
   <table>
     <tr><th>Area</th><th>Status</th></tr>
-    <tr><td>Current packaged backend</td><td>Metal on macOS (<code>macos-metal</code>)</td></tr>
+    <tr><td>Packaged backends</td><td>Metal on macOS (<code>macos-metal</code>) and Vulkan on Windows (<code>windows-vulkan</code>)</td></tr>
     <tr><td>Shared source branch</td><td><code>nuru-core</code></td></tr>
     <tr><td>macOS implementation branch</td><td><code>macos-metal</code></td></tr>
     <tr><td>Windows implementation branch</td><td><code>windows-vulkan</code></td></tr>
@@ -219,6 +239,8 @@
     <tr><td>Recommended macOS hardware</td><td>Apple M3 or newer</td></tr>
     <tr><td>Recommended macOS version</td><td>macOS 14 or newer</td></tr>
     <tr><td>Unsupported Apple GPUs</td><td>M1 and M2 do not provide the required hardware RT support</td></tr>
+    <tr><td>Recommended Windows hardware</td><td>NVIDIA GeForce RTX (RTX 20 series or newer) with a current driver</td></tr>
+    <tr><td>Recommended Windows version</td><td>Windows 10 or 11, 64-bit</td></tr>
   </table>
 
   <h2 id="why-use-nuru">Why Use Nuru</h2>
@@ -283,7 +305,7 @@
     <tr><td><code>windows-vulkan</code></td><td>Windows Vulkan implementation branch, based on <code>nuru-core</code>.</td></tr>
     <tr><td><code>linux-vulkan</code></td><td>Linux Vulkan implementation branch, based on <code>nuru-core</code>.</td></tr>
   </table>
-  <p>The current user-facing build is still the macOS Metal build. Windows and Linux development should take shared behavior from <code>nuru-core</code> and keep platform-specific Vulkan code on their own branches.</p>
+  <p>Packaged builds are available for macOS (Metal) and Windows (Vulkan, NVIDIA RTX). Linux development takes shared behavior from <code>nuru-core</code> and keeps platform-specific Vulkan code on its own branch.</p>
 
   <h2 id="current-limits">Current Limits</h2>
   <ul>
@@ -297,6 +319,9 @@
   <p>If your macOS build is unsigned and not notarized, Gatekeeper may report that <code>Blender-Nuru.app</code> is damaged.</p>
   <pre><code>xattr -dr com.apple.quarantine /path/to/Blender-Nuru.app</code></pre>
 
+  <h2 id="windows-download-note">Windows Download Note</h2>
+  <p>The Windows build is unsigned, so the first start may show <strong>"Windows protected your PC"</strong> (SmartScreen). Click <strong>More info</strong>, then <strong>Run anyway</strong>. Unzip the package anywhere and start <code>Blender-Nuru.exe</code>; see <a href="docs/nuru_windows.html">Nuru On Windows</a> for requirements and details.</p>
+
   <h2 id="documentation">Documentation</h2>
   <p>Start at <a href="docs/README.html">docs/README.html</a>.</p>
   <ul>
@@ -304,6 +329,7 @@
     <li><a href="docs/nuru_ui_reference.html">UI Reference</a></li>
     <li><a href="docs/nuru_shadows_and_lights.html">Shadows And Lights</a></li>
     <li><a href="docs/nuru_materials.html">Materials</a></li>
+    <li><a href="docs/nuru_windows.html">Nuru On Windows</a></li>
   </ul>
 
   <h2>Upstream Blender Links</h2>

@@ -52,7 +52,7 @@ void main()
   if ((queue_index % stride) != (uint(hardware_nis_train_offset) % stride)) {
     return;
   }
-  if (uniform_buf.raytrace.hardware_nis_enable == 0) {
+  if (!uniform_buf.raytrace.hardware_nis_enable) {
     return;
   }
 

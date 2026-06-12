@@ -16,6 +16,24 @@
     <a href="#current-limits">Current Limits</a> |
     <a href="#documentation">Docs</a>
   </p>
+
+  <table>
+    <tr>
+      <th align="center" width="33%">Windows</th>
+      <th align="center" width="33%">macOS</th>
+      <th align="center" width="33%">Linux</th>
+    </tr>
+    <tr>
+      <td align="center">NVIDIA RTX &middot; Vulkan</td>
+      <td align="center">Apple Silicon M3+ &middot; Metal</td>
+      <td align="center">Vulkan</td>
+    </tr>
+    <tr>
+      <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-windows-5.1.1-0.9.8.zip"><strong>Download 5.1.1-0.9.8</strong></a></td>
+      <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-macos-5.1.1-0.9.8.zip"><strong>Download 5.1.1-0.9.8</strong></a></td>
+      <td align="center"><em>Coming soon</em></td>
+    </tr>
+  </table>
 </div>
 
 ## What Nuru Is
@@ -26,7 +44,7 @@ Nuru is a hybrid real-time renderer. It is designed for interactive viewport fee
 
 | Area | Status |
 | --- | --- |
-| Current packaged backend | Metal on macOS (`macos-metal`) |
+| Packaged backends | Metal on macOS (`macos-metal`) and Vulkan on Windows (`windows-vulkan`) |
 | Shared source branch | `nuru-core` |
 | macOS implementation branch | `macos-metal` |
 | Windows implementation branch | `windows-vulkan` |
@@ -34,13 +52,15 @@ Nuru is a hybrid real-time renderer. It is designed for interactive viewport fee
 | Recommended macOS hardware | Apple M3 or newer |
 | Recommended macOS version | macOS 14 or newer |
 | Unsupported Apple GPUs | M1 and M2 do not provide the required hardware RT support |
+| Recommended Windows hardware | NVIDIA GeForce RTX (RTX 20 series or newer) with a current driver |
+| Recommended Windows version | Windows 10 or 11, 64-bit |
 
 ## Why Use Nuru
 
 Nuru is strongest when you need fast, stable images while working or rendering animation.
 
 - **High-resolution output:** At 4K and above, Nuru can keep expensive RT work at a lower internal **Resolution** while still producing a high-resolution final image. The Resolution setting applies to every traced effect, including reflections and refractions.
-- **True materials in reflections:** Mirrors and refractive surfaces show the real material of what they reflect — image textures, UV maps, and mixed shader setups stay intact in the reflection.
+- **True materials in reflections:** Mirrors and refractive surfaces show the real material of what they reflect ΓÇö image textures, UV maps, and mixed shader setups stay intact in the reflection.
 - **Volumetrics:** Object and world volumes render in viewport and final frames, including lit fog and sun shafts through windows.
 - **Animation stability:** Integrated denoising and temporal accumulation help reduce frame-to-frame noise shimmer that can appear in low-sample path-traced animation.
 - **Fast repeated frames:** After the first warm-up, animation frames can progress quickly because Nuru traces selected effects instead of path tracing every light path from scratch.
@@ -88,7 +108,7 @@ Nuru now uses a shared-core plus thin platform-branch model:
 | `windows-vulkan` | Windows Vulkan implementation branch, based on `nuru-core`. |
 | `linux-vulkan` | Linux Vulkan implementation branch, based on `nuru-core`. |
 
-The current user-facing build is still the macOS Metal build. Windows and Linux development should take shared behavior from `nuru-core` and keep platform-specific Vulkan code on their own branches.
+Packaged builds are available for macOS (Metal) and Windows (Vulkan, NVIDIA RTX). Linux development takes shared behavior from `nuru-core` and keeps platform-specific Vulkan code on its own branch.
 
 ## Current Limits
 
@@ -105,6 +125,10 @@ If your macOS build is unsigned and not notarized, Gatekeeper may report that `B
 xattr -dr com.apple.quarantine /path/to/Blender-Nuru.app
 ```
 
+## Windows Download Note
+
+The Windows build is unsigned, so the first start may show **"Windows protected your PC"** (SmartScreen). Click **More info**, then **Run anyway**. Unzip the package anywhere and start `Blender-Nuru.exe`; see [`docs/nuru_windows.html`](docs/nuru_windows.html) for requirements and details.
+
 ## Documentation
 
 Start with [`docs/README.html`](docs/README.html).
@@ -113,6 +137,7 @@ Start with [`docs/README.html`](docs/README.html).
 - [`docs/nuru_ui_reference.html`](docs/nuru_ui_reference.html) documents the visible UI controls.
 - [`docs/nuru_shadows_and_lights.html`](docs/nuru_shadows_and_lights.html) explains RT shadows and transparent shadow controls.
 - [`docs/nuru_materials.html`](docs/nuru_materials.html) explains material expectations and current limits.
+- [`docs/nuru_windows.html`](docs/nuru_windows.html) covers Windows requirements, installation, and platform notes.
 
 ## Upstream Blender Links
 

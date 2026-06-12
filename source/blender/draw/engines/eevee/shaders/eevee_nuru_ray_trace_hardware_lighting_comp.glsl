@@ -74,6 +74,19 @@ float3 hardware_rt_shadow_visibility_fetch(int2 texel, int layer)
 #define PRINCIPLED_DIFFUSE_REFLECTION_FADE_START 0.5f
 #define PRINCIPLED_DIFFUSE_REFLECTION_FADE_END 1.0f
 
+#ifndef GPU_METAL
+/* Nuru: plain GLSL compiles this file top to bottom, so helpers defined further down need
+ * prototypes before their first use. Metal must not see these prototypes: the MSL generator
+ * already forward-declares every function as a shader-class member, so an explicit prototype
+ * becomes a duplicate member declaration and fails compilation. */
+bool hardware_hit_closure_has_energy(ClosureUndetermined cl);
+bool hardware_hit_closure_is_specular_family(ClosureType type);
+bool hardware_closure_has_transmission(ClosureType type);
+bool layered_receiver_hit_exists(int2 texel);
+bool layered_receiver_hit_uses_proxy_payload(int2 texel);
+bool transmission_receiver_hit_uses_proxy_payload(int2 texel);
+#endif
+
 int hardware_hit_specular_mode(ClosureUndetermined cl)
 {
   int mode = RAYTRACE_SPECULAR_MODE_OFF;
@@ -174,7 +187,6 @@ bool hardware_hit_uses_specular_texture_tint_only(uint identity_flags,
       return true;
     }
   }
-  (void)base_cl;
   return false;
 }
 
@@ -203,7 +215,6 @@ bool hardware_scene_final_suppress_direct_hit_light(bool primary_is_diffuse_gi,
   if ((identity_flags & 8u) != 0u) {
     return false;
   }
-  (void)proxy_payload;
   if ((cl_type == CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID) &&
       (metallic_coverage >= 1.0f - 1.0e-3f))
   {
@@ -217,9 +228,6 @@ bool hardware_scene_final_suppress_direct_hit_light(bool primary_is_diffuse_gi,
   }
   /* Principled mirror replay keeps diffuse and metal only; the dielectric specular lobe is not
    * suppressed here because hit-eval no longer exports it as a reflective receiver. */
-  (void)identity_flags;
-  (void)cl_type;
-  (void)metallic_coverage;
   return false;
 }
 
@@ -244,8 +252,6 @@ float hardware_principled_reflection_layer_visibility(bool principled_layered_sc
     return 1.0f;
   }
   if (specular_cl.type == CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID) {
-    (void)N;
-    (void)V;
     if (proxy_payload) {
       /* The bounded proxy carries only one closure family. Scale the reflection lobe by the
        * sync-time metallic coverage so intermediate Principled metallic values blend with the
@@ -283,8 +289,6 @@ ClosureUndetermined hardware_principled_metal_tinted_specular(
     return specular_cl;
   }
   /* The material hit-eval replay already packed the metal-only Principled reflection. */
-  (void)base_cl;
-  (void)metallic_coverage;
   return specular_cl;
 }
 
@@ -507,11 +511,32 @@ float4 hardware_hit_transmission_layer_load(int2 texel)
   return texelFetch(hit_transmission_layer_tx, texel, 0);
 }
 
+/* Nuru: plain GLSL has no default struct constructor (`ObjectInfos()` only compiles through the
+ * MSL path); zero every field explicitly so both backends agree on the miss value. */
+ObjectInfos hardware_object_infos_zero()
+{
+  ObjectInfos object_infos;
+  object_infos.orco_add = float3(0.0f);
+  object_infos.object_attrs_offset = 0u;
+  object_infos.orco_mul = float3(0.0f);
+  object_infos.object_attrs_len = 0u;
+  object_infos.ob_color = float4(0.0f);
+  object_infos.index = 0u;
+  object_infos.light_and_shadow_set_membership = 0u;
+  object_infos.random = 0.0f;
+  object_infos.flag = eObjectInfoFlag(0u);
+  object_infos.shadow_terminator_normal_offset = 0.0f;
+  object_infos.shadow_terminator_geometry_offset = 0.0f;
+  object_infos._pad1 = 0.0f;
+  object_infos._pad2 = 0.0f;
+  return object_infos;
+}
+
 bool hardware_hit_object_infos_load(int2 texel, ObjectInfos &object_infos)
 {
   const uint resource_id = imageLoadFast(hit_identity_img, texel).w;
   if (resource_id == 0xFFFFFFFFu) {
-    object_infos = ObjectInfos();
+    object_infos = hardware_object_infos_zero();
     return false;
   }
   object_infos = drw_infos[resource_id];
@@ -876,7 +901,6 @@ bool hardware_scene_final_is_textured_specular_replay(
 {
   /* Only the mirrored scene-final proxy path uses this replay contract. Direct-view refraction
    * stays on the normal material path and must not be routed through this branch. */
-  (void)principled_layered_scene_final;
   return scene_final_specular_phase && !primary_is_diffuse_gi &&
          preserved_layered_scene_final && ((hit_identity_flags & 16u) != 0u);
 }
@@ -1157,7 +1181,7 @@ bool layered_receiver_hit_object_infos_load(int2 texel, ObjectInfos &object_info
 {
   const uint resource_id = texelFetch(layered_receiver_hit_identity_tx, texel, 0).w;
   if (resource_id == 0xFFFFFFFFu) {
-    object_infos = ObjectInfos();
+    object_infos = hardware_object_infos_zero();
     return false;
   }
   object_infos = drw_infos[resource_id];
@@ -2068,7 +2092,7 @@ bool transmission_receiver_hit_object_infos_load(int2 texel, ObjectInfos &object
 {
   const uint resource_id = texelFetch(transmission_receiver_hit_identity_tx, texel, 0).w;
   if (resource_id == 0xFFFFFFFFu) {
-    object_infos = ObjectInfos();
+    object_infos = hardware_object_infos_zero();
     return false;
   }
   object_infos = drw_infos[resource_id];
@@ -2489,9 +2513,6 @@ bool hardware_hit_reflected_receiver_caustics_eligible(bool scene_final_specular
   /* Receiver caustics are written to the diffuse caustics buffer and combined on diffuse
    * closures only. Injecting the same term into scene-final reflection radiance blows out metal
    * (Principled diffuse base + sharp reflection) with an extra 2.5x boost. */
-  (void)scene_final_specular_phase;
-  (void)primary_closure;
-  (void)base_cl;
   return false;
 }
 

@@ -818,15 +818,15 @@ void ShadowModule::end_sync()
     }
   }
 
-  /* Nuru policy: VSM is kept for user-placed lights when HWRT shadows are OFF; the HDRI / world
-   * sun never gets a VSM clipmap.
+  /* Nuru policy: VSM is kept for all shadow-casting lights when HWRT shadows are OFF, including
+   * the HDRI / world sun (CPU-tagged with `light.color.x < 0.0f` in
+   * `LightModule::add_world_sun_light`). The world sun previously never received a VSM clipmap,
+   * which left it completely unshadowed in VSM mode whenever HWRT environment visibility was
+   * also off — the extracted HDRI sun then lit every interior surface and read as directional
+   * sunlight leaking through walls.
    *
-   * - HDRI / world sun (CPU-tagged with `light.color.x < 0.0f` in `LightModule::add_world_sun_light`):
-   *   never gets VSM. Its shadow is provided by HWRT environment visibility when HWRT is on, and
-   *   we accept no shadow when both HWRT shadows and HWRT environment are off. The HDRI sun would
-   *   otherwise dominate the shadow page pool with a clipmap nothing reads.
-   * - User-placed sun (clipmap) and local lights (cubemap) get VSM whenever HWRT shadows are OFF
-   *   so they have working shadows in the legacy path.
+   * - User-placed sun (clipmap), the world sun (clipmap), and local lights (cubemap) get VSM
+   *   whenever HWRT shadows are OFF so they have working shadows in the legacy path.
    * - All lights get HWRT shadows when HWRT is ON; the VSM clipmap/cubemap is then pure overhead
    *   and we skip allocation to keep the shadow page pool from overflowing.
    *
@@ -849,8 +849,7 @@ void ShadowModule::end_sync()
   /* Allocate new tile-maps and fill shadow data of the lights. */
   tilemap_pool.tilemaps_data.clear();
   for (Light &light : inst_.lights.light_map_.values()) {
-    const bool is_world_sun = is_sun_light(light.type) && light.color.x < 0.0f;
-    const bool skip_vsm = !enabled_ || is_world_sun || hwrt_shadows_active;
+    const bool skip_vsm = !enabled_ || hwrt_shadows_active;
     if (skip_vsm) {
       light.shadow_discard_safe(*this);
       light.tilemap_index = LIGHT_NO_SHADOW;

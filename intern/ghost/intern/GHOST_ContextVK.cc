@@ -66,6 +66,276 @@ static CLG_LogRef LOG = {"ghost.context"};
   } while (0)
 
 /* -------------------------------------------------------------------- */
+/** \name Nuru: NVIDIA Nsight Aftermath GPU crash dumps (EMERALD)
+ *
+ * Env-gated (`BLENDER_NVIDIA_AFTERMATH=1`) post-mortem GPU crash analysis for the Windows
+ * Vulkan HWRT bring-up (async external-batch VK_ERROR_DEVICE_LOST root-cause hunt; see
+ * docs/agent_handoff.md). The SDK is loaded at runtime from
+ * `BLENDER_AFTERMATH_DLL`, next to the executable, or `%USERPROFILE%/.aftermath/lib/x64/`,
+ * so the build has no compile- or link-time dependency on the Nsight Aftermath SDK and the
+ * minimal C ABI below is declared locally (SDK 2025.5, API version 0x21A).
+ *
+ * On a GPU crash the driver invokes our callback with an `.nv-gpudmp` blob; we write it to
+ * `%TEMP%/nuru-aftermath/`, decode it to JSON in-place, and log both paths. Open the binary
+ * dump in Nsight Graphics for the full inspector.
+ * \{ */
+
+#ifdef _WIN32
+
+namespace nuru_aftermath {
+
+/* Local declarations of the stable Nsight Aftermath C ABI (subset). */
+using AftermathResult = int32_t;
+using AftermathDecoder = void *;
+using PFN_AddDescription = void(__cdecl *)(uint32_t key, const char *value);
+using PFN_GpuCrashDumpCb = void(__cdecl *)(const void *dump, uint32_t size, void *user);
+using PFN_ShaderDebugInfoCb = void(__cdecl *)(const void *data, uint32_t size, void *user);
+using PFN_DescriptionCb = void(__cdecl *)(PFN_AddDescription add, void *user);
+using PFN_ResolveMarkerCb = void(__cdecl *)(
+    const void *marker, uint32_t size, void *user, void **resolved, uint32_t *resolved_size);
+
+constexpr uint32_t AFTERMATH_API_VERSION = 0x21A; /* SDK 2025.5. */
+constexpr uint32_t WATCHED_API_VULKAN = 0x2;
+constexpr uint32_t FEATURE_DEFER_DEBUG_INFO = 0x1;
+constexpr uint32_t DECODER_ALL_INFO = 0x3FFF;
+constexpr uint32_t FORMATTER_UTF8 = 0x2;
+constexpr int32_t STATUS_COLLECTING_FAILED = 2;
+constexpr int32_t STATUS_FINISHED = 4;
+
+using PFN_EnableGpuCrashDumps = AftermathResult(__cdecl *)(uint32_t api_version,
+                                                           uint32_t watched_apis,
+                                                           uint32_t flags,
+                                                           PFN_GpuCrashDumpCb dump_cb,
+                                                           PFN_ShaderDebugInfoCb debug_info_cb,
+                                                           PFN_DescriptionCb description_cb,
+                                                           PFN_ResolveMarkerCb resolve_marker_cb,
+                                                           void *user);
+using PFN_GetCrashDumpStatus = AftermathResult(__cdecl *)(int32_t *r_status);
+using PFN_CreateDecoder = AftermathResult(__cdecl *)(uint32_t api_version,
+                                                     const void *dump,
+                                                     uint32_t size,
+                                                     AftermathDecoder *r_decoder);
+using PFN_GenerateJSON = AftermathResult(__cdecl *)(AftermathDecoder decoder,
+                                                    uint32_t decoder_flags,
+                                                    uint32_t format_flags,
+                                                    void *shader_debug_info_lookup_cb,
+                                                    void *shader_lookup_cb,
+                                                    void *shader_source_lookup_cb,
+                                                    void *user,
+                                                    uint32_t *r_json_size);
+using PFN_GetJSON = AftermathResult(__cdecl *)(AftermathDecoder decoder,
+                                               uint32_t size,
+                                               char *r_json);
+using PFN_DestroyDecoder = AftermathResult(__cdecl *)(AftermathDecoder decoder);
+
+static PFN_GetCrashDumpStatus fn_get_status = nullptr;
+static PFN_CreateDecoder fn_create_decoder = nullptr;
+static PFN_GenerateJSON fn_generate_json = nullptr;
+static PFN_GetJSON fn_get_json = nullptr;
+static PFN_DestroyDecoder fn_destroy_decoder = nullptr;
+static std::mutex dump_mutex;
+static int dump_counter = 0;
+static bool enabled = false;
+
+/* 0 = off, 1 = full diagnostics config (resource tracking + shader error reporting +
+ * automatic checkpoints), 2 = watcher only (no VK_NV_device_diagnostics_config; least
+ * timing-intrusive mode for reproducing races that the full config perturbs away). */
+static int config_level()
+{
+  const char *value = getenv("BLENDER_NVIDIA_AFTERMATH");
+  if (value == nullptr || value[0] == '\0' || (value[0] == '0' && value[1] == '\0')) {
+    return 0;
+  }
+  return (value[0] == '2' && value[1] == '\0') ? 2 : 1;
+}
+
+static bool requested()
+{
+  return config_level() != 0;
+}
+
+static std::string dump_directory()
+{
+  const char *temp = getenv("TEMP");
+  std::string dir = (temp != nullptr) ? std::string(temp) : std::string(".");
+  dir += "\\nuru-aftermath";
+  CreateDirectoryA(dir.c_str(), nullptr);
+  return dir;
+}
+
+static void write_file(const std::string &path, const void *data, const uint32_t size)
+{
+  FILE *file = fopen(path.c_str(), "wb");
+  if (file == nullptr) {
+    fprintf(stderr, "[NURU_AFTERMATH] failed to open %s for writing\n", path.c_str());
+    return;
+  }
+  fwrite(data, 1, size, file);
+  fclose(file);
+}
+
+static void __cdecl gpu_crash_dump_callback(const void *dump, const uint32_t size, void * /*user*/)
+{
+  std::scoped_lock lock(dump_mutex);
+  const std::string dir = dump_directory();
+  const int index = dump_counter++;
+  const std::string base = dir + "\\blender-" + std::to_string(GetCurrentProcessId()) + "-" +
+                           std::to_string(index);
+
+  const std::string dump_path = base + ".nv-gpudmp";
+  write_file(dump_path, dump, size);
+  fprintf(stderr, "[NURU_AFTERMATH] GPU crash dump written: %s\n", dump_path.c_str());
+
+  /* Decode to JSON in-place so the root cause is readable without Nsight Graphics. */
+  if (fn_create_decoder && fn_generate_json && fn_get_json && fn_destroy_decoder) {
+    AftermathDecoder decoder = nullptr;
+    if (fn_create_decoder(AFTERMATH_API_VERSION, dump, size, &decoder) >= 0 && decoder) {
+      uint32_t json_size = 0;
+      if (fn_generate_json(decoder,
+                           DECODER_ALL_INFO,
+                           FORMATTER_UTF8,
+                           nullptr,
+                           nullptr,
+                           nullptr,
+                           nullptr,
+                           &json_size) >= 0 &&
+          json_size > 0)
+      {
+        std::vector<char> json(json_size);
+        if (fn_get_json(decoder, json_size, json.data()) >= 0) {
+          const std::string json_path = base + ".json";
+          write_file(json_path, json.data(), json_size - 1);
+          fprintf(stderr, "[NURU_AFTERMATH] decoded crash dump JSON: %s\n", json_path.c_str());
+        }
+      }
+      fn_destroy_decoder(decoder);
+    }
+  }
+}
+
+static void __cdecl shader_debug_info_callback(const void *data, const uint32_t size, void * /*user*/)
+{
+  /* Only invoked for shaders referenced by a crash dump (deferred callbacks). */
+  std::scoped_lock lock(dump_mutex);
+  const std::string dir = dump_directory();
+  static int debug_info_counter = 0;
+  const std::string path = dir + "\\shader-" + std::to_string(GetCurrentProcessId()) + "-" +
+                           std::to_string(debug_info_counter++) + ".nvdbg";
+  write_file(path, data, size);
+  fprintf(stderr, "[NURU_AFTERMATH] shader debug info written: %s\n", path.c_str());
+}
+
+static void __cdecl description_callback(PFN_AddDescription add, void * /*user*/)
+{
+  /* 0x1 = ApplicationName key. */
+  add(0x1, "Blender-Nuru windows-vulkan HWRT");
+}
+
+static void wait_for_pending_dump_at_exit()
+{
+  if (!enabled || fn_get_status == nullptr) {
+    return;
+  }
+  /* The driver collects the dump asynchronously after a device loss; give it time to finish
+   * before the process exits or the dump is lost. No-op when no crash happened. */
+  int32_t status = -1;
+  if (fn_get_status(&status) < 0 || status == 0) {
+    return;
+  }
+  const ULONGLONG deadline = GetTickCount64() + 10000;
+  while (status != STATUS_FINISHED && status != STATUS_COLLECTING_FAILED &&
+         GetTickCount64() < deadline)
+  {
+    Sleep(50);
+    if (fn_get_status(&status) < 0) {
+      return;
+    }
+  }
+}
+
+static void ensure_enabled()
+{
+  static bool attempted = false;
+  if (attempted) {
+    return;
+  }
+  attempted = true;
+  if (!requested()) {
+    return;
+  }
+
+  HMODULE lib = nullptr;
+  const char *override_path = getenv("BLENDER_AFTERMATH_DLL");
+  if (override_path != nullptr && override_path[0] != '\0') {
+    lib = LoadLibraryA(override_path);
+  }
+  if (lib == nullptr) {
+    lib = LoadLibraryA("GFSDK_Aftermath_Lib.x64.dll");
+  }
+  if (lib == nullptr) {
+    const char *profile = getenv("USERPROFILE");
+    if (profile != nullptr) {
+      const std::string sdk_path = std::string(profile) +
+                                   "\\.aftermath\\lib\\x64\\GFSDK_Aftermath_Lib.x64.dll";
+      lib = LoadLibraryA(sdk_path.c_str());
+    }
+  }
+  if (lib == nullptr) {
+    fprintf(stderr,
+            "[NURU_AFTERMATH] BLENDER_NVIDIA_AFTERMATH is set but GFSDK_Aftermath_Lib.x64.dll "
+            "was not found (set BLENDER_AFTERMATH_DLL or install to %%USERPROFILE%%\\.aftermath)\n");
+    return;
+  }
+
+  const auto fn_enable = reinterpret_cast<PFN_EnableGpuCrashDumps>(
+      GetProcAddress(lib, "GFSDK_Aftermath_EnableGpuCrashDumps"));
+  fn_get_status = reinterpret_cast<PFN_GetCrashDumpStatus>(
+      GetProcAddress(lib, "GFSDK_Aftermath_GetCrashDumpStatus"));
+  fn_create_decoder = reinterpret_cast<PFN_CreateDecoder>(
+      GetProcAddress(lib, "GFSDK_Aftermath_GpuCrashDump_CreateDecoder"));
+  fn_generate_json = reinterpret_cast<PFN_GenerateJSON>(
+      GetProcAddress(lib, "GFSDK_Aftermath_GpuCrashDump_GenerateJSON"));
+  fn_get_json = reinterpret_cast<PFN_GetJSON>(
+      GetProcAddress(lib, "GFSDK_Aftermath_GpuCrashDump_GetJSON"));
+  fn_destroy_decoder = reinterpret_cast<PFN_DestroyDecoder>(
+      GetProcAddress(lib, "GFSDK_Aftermath_GpuCrashDump_DestroyDecoder"));
+  if (fn_enable == nullptr) {
+    fprintf(stderr, "[NURU_AFTERMATH] GFSDK_Aftermath_EnableGpuCrashDumps export missing\n");
+    return;
+  }
+
+  const AftermathResult result = fn_enable(AFTERMATH_API_VERSION,
+                                           WATCHED_API_VULKAN,
+                                           FEATURE_DEFER_DEBUG_INFO,
+                                           gpu_crash_dump_callback,
+                                           shader_debug_info_callback,
+                                           description_callback,
+                                           nullptr,
+                                           nullptr);
+  if (result < 0) {
+    fprintf(stderr, "[NURU_AFTERMATH] GFSDK_Aftermath_EnableGpuCrashDumps failed: 0x%x\n",
+            uint32_t(result));
+    return;
+  }
+  enabled = true;
+  atexit(wait_for_pending_dump_at_exit);
+  fprintf(stderr,
+          "[NURU_AFTERMATH] GPU crash dumps enabled (dumps in %s)\n",
+          dump_directory().c_str());
+}
+
+static bool is_enabled()
+{
+  return enabled;
+}
+
+}  // namespace nuru_aftermath
+
+#endif /* _WIN32 */
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Swap-chain resources
  * \{ */
 
@@ -358,6 +628,10 @@ struct GHOST_InstanceVK {
 
   bool create_instance(uint32_t vulkan_api_version)
   {
+#ifdef _WIN32
+    /* Nuru: must be called before any Vulkan device exists to watch it for GPU crashes. */
+    nuru_aftermath::ensure_enabled();
+#endif
     VkApplicationInfo vk_application_info = {VK_STRUCTURE_TYPE_APPLICATION_INFO,
                                              nullptr,
                                              "Blender",
@@ -486,6 +760,22 @@ struct GHOST_InstanceVK {
      *
      * Ref #151103
      */
+    /* Nuru: VK_KHR_acceleration_structure requires deferred host operations and buffer device
+     * address. Keep the trio consistent: without the prerequisites, drop the ray tracing
+     * extensions instead of creating an invalid device. */
+    if (device.extensions.is_enabled(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME) &&
+        (!device.extensions.is_enabled(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) ||
+         device.features_12.bufferDeviceAddress == VK_FALSE))
+    {
+      device.extensions.disable(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+      device.extensions.disable(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+    }
+    if (device.extensions.is_enabled(VK_KHR_RAY_QUERY_EXTENSION_NAME) &&
+        !device.extensions.is_enabled(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME))
+    {
+      device.extensions.disable(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+    }
+
     const bool is_amd_driver = device.properties_12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY ||
                                device.properties_12.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE;
     if (is_amd_driver && is_debug) {
@@ -541,6 +831,13 @@ struct GHOST_InstanceVK {
     device_features.drawIndirectFirstInstance = VK_TRUE;
     device_features.samplerAnisotropy = device.features.features.samplerAnisotropy;
     device_features.wideLines = device.features.features.wideLines;
+    /* Nuru: hardware ray tracing kernels rely on 64-bit integers and format-less storage image
+     * access. Enable them when the device offers them (always present on NVIDIA RTX). */
+    device_features.shaderInt64 = device.features.features.shaderInt64;
+    device_features.shaderStorageImageReadWithoutFormat =
+        device.features.features.shaderStorageImageReadWithoutFormat;
+    device_features.shaderStorageImageWriteWithoutFormat =
+        device.features.features.shaderStorageImageWriteWithoutFormat;
 
     VkDeviceCreateInfo device_create_info = {};
     device_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -565,6 +862,9 @@ struct GHOST_InstanceVK {
     vulkan_12_features.shaderOutputViewportIndex = device.features_12.shaderOutputViewportIndex;
     vulkan_12_features.bufferDeviceAddress = device.features_12.bufferDeviceAddress;
     vulkan_12_features.timelineSemaphore = VK_TRUE;
+    /* Nuru: hardware ray-tracing kernels use scalar block layout so GLSL uniform/storage blocks
+     * byte-match the tightly packed C++ uniform structs. */
+    vulkan_12_features.scalarBlockLayout = device.features_12.scalarBlockLayout;
     feature_struct_ptr.push_back(&vulkan_12_features);
 
 #ifndef __APPLE__
@@ -688,6 +988,41 @@ struct GHOST_InstanceVK {
     if (device.extensions.is_enabled(VK_EXT_HOST_IMAGE_COPY_EXTENSION_NAME)) {
       feature_struct_ptr.push_back(&host_image_copy);
     }
+
+    /* Nuru: VK_KHR_acceleration_structure */
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR acceleration_structure_features = {};
+    acceleration_structure_features.sType =
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+    acceleration_structure_features.accelerationStructure = VK_TRUE;
+    if (device.extensions.is_enabled(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)) {
+      feature_struct_ptr.push_back(&acceleration_structure_features);
+    }
+
+    /* Nuru: VK_KHR_ray_query */
+    VkPhysicalDeviceRayQueryFeaturesKHR ray_query_features = {};
+    ray_query_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR;
+    ray_query_features.rayQuery = VK_TRUE;
+    if (device.extensions.is_enabled(VK_KHR_RAY_QUERY_EXTENSION_NAME)) {
+      feature_struct_ptr.push_back(&ray_query_features);
+    }
+
+#ifdef _WIN32
+    /* Nuru: VK_NV_device_diagnostics_config (Nsight Aftermath, BLENDER_NVIDIA_AFTERMATH=1).
+     * Resource tracking names page-fault addresses, shader error reporting surfaces silent
+     * OOB/misaligned accesses, automatic checkpoints record per-command call sites (the
+     * checkpoints extension is appended above). Shader debug info is intentionally off:
+     * our SPIR-V is built without debug info, and it adds compile overhead. */
+    VkDeviceDiagnosticsConfigCreateInfoNV aftermath_diagnostics = {};
+    aftermath_diagnostics.sType = VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV;
+    aftermath_diagnostics.flags = VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_RESOURCE_TRACKING_BIT_NV |
+                                  VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_AUTOMATIC_CHECKPOINTS_BIT_NV |
+                                  VK_DEVICE_DIAGNOSTICS_CONFIG_ENABLE_SHADER_ERROR_REPORTING_BIT_NV;
+    if (nuru_aftermath::is_enabled() && nuru_aftermath::config_level() == 1 &&
+        device.extensions.is_enabled(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME))
+    {
+      feature_struct_ptr.push_back(&aftermath_diagnostics);
+    }
+#endif
 
     /* Link all registered feature structs. */
     for (int i = 1; i < feature_struct_ptr.size(); i++) {
@@ -1666,6 +2001,20 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     optional_device_extensions.append(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
     optional_device_extensions.append(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME);
     optional_device_extensions.append(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
+    /* Nuru: hardware ray tracing (acceleration structures + ray queries in compute). */
+    optional_device_extensions.append(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
+    optional_device_extensions.append(VK_KHR_RAY_QUERY_EXTENSION_NAME);
+    optional_device_extensions.append(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
+    /* Nuru: GPU-wedge diagnostic markers; recording is env-gated in the GPU backend
+     * (BLENDER_VULKAN_CHECKPOINTS=1), enabling the extension alone is inert. */
+    optional_device_extensions.append(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+#ifdef _WIN32
+    /* Nuru: Nsight Aftermath feature configuration (BLENDER_NVIDIA_AFTERMATH=1; level 2 keeps
+     * the watcher without the diagnostics config to preserve race timing). */
+    if (nuru_aftermath::is_enabled() && nuru_aftermath::config_level() == 1) {
+      optional_device_extensions.append(VK_NV_DEVICE_DIAGNOSTICS_CONFIG_EXTENSION_NAME);
+    }
+#endif
     /* Disabled as the extension is available, but without any features set. */
 #ifndef __APPLE__
     optional_device_extensions.append(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME);

@@ -146,14 +146,19 @@ void VKFrameBuffer::build_clear_attachments_depth_stencil(
 }
 
 void VKFrameBuffer::build_clear_attachments_color(
-    const float (*clear_colors)[4],
+    Span<double4> clear_colors,
     const bool multi_clear_colors,
     render_graph::VKClearAttachmentsNode::CreateInfo &clear_attachments) const
 {
-  int color_index = 0;
   for (int color_slot = 0; color_slot < GPU_FB_MAX_COLOR_ATTACHMENT; color_slot++) {
     const GPUAttachment &attachment = attachments_[GPU_FB_COLOR_ATTACHMENT0 + color_slot];
     if (attachment.tex == nullptr) {
+      continue;
+    }
+    /* Multi-clear colors are indexed by attachment slot (matching the Metal backend); single
+     * clears broadcast the first color to every attachment. */
+    const int color_index = multi_clear_colors ? color_slot : 0;
+    if (color_index >= clear_colors.size()) {
       continue;
     }
     VkClearAttachment &clear_attachment =
@@ -162,9 +167,7 @@ void VKFrameBuffer::build_clear_attachments_color(
     clear_attachment.colorAttachment = color_slot;
     eGPUDataFormat data_format = to_texture_data_format(GPU_texture_format(attachment.tex));
     clear_attachment.clearValue.color = to_vk_clear_color_value(data_format,
-                                                                &clear_colors[color_index]);
-
-    color_index += multi_clear_colors ? 1 : 0;
+                                                                clear_colors[color_index]);
   }
 }
 
@@ -180,7 +183,7 @@ void VKFrameBuffer::clear(render_graph::VKClearAttachmentsNode::CreateInfo &clea
 }
 
 void VKFrameBuffer::clear(const GPUFrameBufferBits buffers,
-                          const float clear_color[4],
+                          const double4 clear_color,
                           float clear_depth,
                           uint clear_stencil)
 {
@@ -223,9 +226,7 @@ void VKFrameBuffer::clear(const GPUFrameBufferBits buffers,
     }
   }
   if (buffers & GPU_COLOR_BIT) {
-    float clear_color_single[4];
-    copy_v4_v4(clear_color_single, clear_color);
-    build_clear_attachments_color(&clear_color_single, false, clear_attachments);
+    build_clear_attachments_color(Span<double4>(&clear_color, 1), false, clear_attachments);
   }
 
   if (clear_attachments.attachment_count) {
@@ -233,27 +234,50 @@ void VKFrameBuffer::clear(const GPUFrameBufferBits buffers,
   }
 }
 
-void VKFrameBuffer::clear_multi(const float (*clear_color)[4])
+void VKFrameBuffer::clear_multi(Span<double4> clear_cols)
 {
   render_graph::VKClearAttachmentsNode::CreateInfo clear_attachments = {};
   render_area_update(clear_attachments.vk_clear_rect.rect);
   clear_attachments.vk_clear_rect.baseArrayLayer = 0;
   clear_attachments.vk_clear_rect.layerCount = 1;
 
-  build_clear_attachments_color(clear_color, true, clear_attachments);
+  build_clear_attachments_color(clear_cols, true, clear_attachments);
   if (clear_attachments.attachment_count) {
     clear(clear_attachments);
   }
 }
 
-void VKFrameBuffer::clear_attachment(GPUAttachmentType /*type*/,
-                                     eGPUDataFormat /*data_format*/,
-                                     const void * /*clear_value*/)
+void VKFrameBuffer::clear_attachment(GPUAttachmentType type, const double4 clear_value)
 {
-  /* Clearing of a single attachment was added to implement `clear_multi` in OpenGL. As
-   * `clear_multi` is supported in Vulkan it isn't needed to implement this method.
-   */
-  BLI_assert_unreachable();
+  render_graph::VKClearAttachmentsNode::CreateInfo clear_attachments = {};
+  render_area_update(clear_attachments.vk_clear_rect.rect);
+  clear_attachments.vk_clear_rect.baseArrayLayer = 0;
+  clear_attachments.vk_clear_rect.layerCount = 1;
+
+  if (type == GPU_FB_DEPTH_ATTACHMENT || type == GPU_FB_DEPTH_STENCIL_ATTACHMENT) {
+    const GPUFrameBufferBits buffers = (type == GPU_FB_DEPTH_STENCIL_ATTACHMENT) ?
+                                           (GPU_DEPTH_BIT | GPU_STENCIL_BIT) :
+                                           GPU_DEPTH_BIT;
+    build_clear_attachments_depth_stencil(
+        buffers, float(clear_value.x), uint32_t(clear_value.y), clear_attachments);
+  }
+  else {
+    const int color_slot = type - GPU_FB_COLOR_ATTACHMENT0;
+    const GPUAttachment &attachment = attachments_[GPU_FB_COLOR_ATTACHMENT0 + color_slot];
+    if (attachment.tex == nullptr) {
+      return;
+    }
+    VkClearAttachment &clear_attachment =
+        clear_attachments.attachments[clear_attachments.attachment_count++];
+    clear_attachment.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    clear_attachment.colorAttachment = color_slot;
+    eGPUDataFormat data_format = to_texture_data_format(GPU_texture_format(attachment.tex));
+    clear_attachment.clearValue.color = to_vk_clear_color_value(data_format, clear_value);
+  }
+
+  if (clear_attachments.attachment_count) {
+    clear(clear_attachments);
+  }
 }
 
 /** \} */

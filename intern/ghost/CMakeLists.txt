@@ -80,6 +80,13 @@ if(WITH_OPENGL_BACKEND)
     PRIVATE bf::dependencies::epoxy
   )
   add_definitions(-DWITH_OPENGL_BACKEND)
+elseif(WIN32)
+  # Nuru: the fork builds Windows Vulkan-only (`WITH_OPENGL_BACKEND=OFF`), but the WIN32 GHOST
+  # sources (`GHOST_Context.cc` WGL error codes, `GHOST_ContextWGL.cc`, `GHOST_ContextD3D.cc`
+  # NV_DX interop) unconditionally need the epoxy headers/library.
+  list(APPEND LIB
+    PRIVATE bf::dependencies::epoxy
+  )
 endif()
 
 if(WITH_VULKAN_BACKEND)
@@ -442,11 +449,13 @@ elseif(WIN32)
     intern/GHOST_Wintab.hh
   )
 
-  list(APPEND SRC
-    intern/GHOST_ContextWGL.cc
+  if(WITH_OPENGL_BACKEND)
+    list(APPEND SRC
+      intern/GHOST_ContextWGL.cc
 
-    intern/GHOST_ContextWGL.hh
-  )
+      intern/GHOST_ContextWGL.hh
+    )
+  endif()
 
   if(WITH_INPUT_IME)
     list(APPEND SRC

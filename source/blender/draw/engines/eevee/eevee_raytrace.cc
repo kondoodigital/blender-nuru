@@ -2603,6 +2603,9 @@ bool RayTraceModule::submit_hardware_hit_evaluation_backend(View &render_view)
 
     auto bind_hit_eval_resources = [&](draw::PassSimple &pass) {
       pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
+      /* Nuru: replayed material graphs can sample HiZ (slot 3) like every other material
+       * pass; without this bind Vulkan logs a missing-bind error per hit-eval draw. */
+      pass.bind_resources(inst_.hiz_buffer.front);
       pass.bind_texture("ray_data_tx", &ray_data_tx_);
       pass.bind_texture("ray_time_tx", payload.ray_time_tx);
       pass.bind_texture("hit_identity_tx", payload.hit_identity_tx);
@@ -3091,6 +3094,12 @@ void RayTraceModule::sync()
     pass.bind_texture("radiance_back_tx", &screen_radiance_back_tx_);
     pass.bind_texture("hit_world_position_tx", &hit_world_position_tx_);
     pass.bind_texture("hit_transmission_layer_tx", &hit_throughput_tx_);
+    /* Nuru: declared in the create info (slots 22/23) and read for the Principled metallic
+     * coverage; they were never bound here, which Metal masks silently while Vulkan logs a
+     * missing-bind error every frame and samples a dummy (coverage 0). Core-promotion
+     * candidate: validate the Metal mirror-metal matrix after picking this up. */
+    pass.bind_texture("hit_barycentric_tx", &hit_barycentric_tx_);
+    pass.bind_texture("layered_receiver_barycentric_tx", &layered_receiver_barycentric_tx_);
     pass.bind_texture("layered_receiver_throughput_tx", &layered_receiver_throughput_tx_);
     pass.bind_texture("layered_receiver_ray_time_tx", &layered_receiver_ray_time_tx_);
     pass.bind_texture("layered_receiver_ray_radiance_tx", &layered_receiver_ray_radiance_tx_);

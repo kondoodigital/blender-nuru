@@ -11,6 +11,9 @@
 #include "vk_render_graph.hh"
 #include "vk_to_string.hh"
 
+#include "BLI_string.h"
+
+#include <cstdlib>
 #include <sstream>
 
 namespace blender::gpu::render_graph {
@@ -223,6 +226,35 @@ void VKCommandBuilder::groups_extract_barriers(VKRenderGraph &render_graph,
   BLI_assert(group_post_barriers_.size() == group_nodes_.size());
 }
 
+/* Nuru: VK_NV_device_diagnostic_checkpoints (wedge diagnostic, BLENDER_VULKAN_CHECKPOINTS=1).
+ * Checkpoint markers are raw pointers handed to the driver and read back after a device loss,
+ * so they must live in process-lifetime storage. Only the submission runner thread records
+ * render-graph nodes, so a plain ring without locking is sufficient. The ring is allocated
+ * lazily on first use and deliberately never freed. */
+static const char *checkpoint_marker_format(const VKRenderGraph &render_graph,
+                                            NodeHandle node_handle,
+                                            VKNodeType node_type)
+{
+  constexpr uint32_t ring_size = 16384;
+  constexpr uint32_t marker_size = 192;
+  static char(*ring)[marker_size] = static_cast<char(*)[marker_size]>(
+      calloc(ring_size, marker_size));
+  static uint32_t next = 0;
+  char *marker = ring[next];
+  next = (next + 1) % ring_size;
+
+  std::stringstream ss;
+  ss << node_type;
+  const std::string group = render_graph.full_debug_group(node_handle);
+  BLI_snprintf(marker,
+               marker_size,
+               "%s h=%llu%s",
+               ss.str().c_str(),
+               (unsigned long long)node_handle,
+               group.c_str());
+  return marker;
+}
+
 void VKCommandBuilder::groups_build_commands(VKRenderGraph &render_graph,
                                              VKCommandBufferInterface &command_buffer,
                                              Span<NodeHandle> node_handles)
@@ -298,6 +330,11 @@ void VKCommandBuilder::groups_build_commands(VKRenderGraph &render_graph,
                 << ", node_type=" << node.type
                 << ", debug group=" << render_graph.full_debug_group(node_handle) << "\n";
 #endif
+      /* Nuru: per-node wedge-diagnostic checkpoint (BLENDER_VULKAN_CHECKPOINTS=1). */
+      if (UNLIKELY(vk_diagnostic_checkpoints_requested())) {
+        command_buffer.set_checkpoint_marker(
+            checkpoint_marker_format(render_graph, node_handle, node.type));
+      }
       node.build_commands(command_buffer, render_graph.storage_, active_pipelines);
     }
 

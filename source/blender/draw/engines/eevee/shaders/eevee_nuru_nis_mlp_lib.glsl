@@ -98,7 +98,7 @@ void hardware_nis_cluster_multipliers(float3 P,
                                       bool P_valid,
                                       out float r_multipliers[HWRT_NIS_OUT])
 {
-  if (!P_valid || uniform_buf.raytrace.hardware_nis_enable == 0) {
+  if (!P_valid || !uniform_buf.raytrace.hardware_nis_enable) {
     for (int c = 0; c < HWRT_NIS_OUT; c++) {
       r_multipliers[c] = 1.0f;
     }

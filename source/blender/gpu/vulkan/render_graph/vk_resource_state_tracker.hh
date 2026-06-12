@@ -214,6 +214,15 @@ class VKResourceStateTracker {
   void update_image_layout(VkImage vk_image, VkImageLayout vk_image_layout);
 
   /**
+   * \brief Return the last known layout of an image.
+   *
+   * Nuru: used by the hardware ray-tracing submission path to transition images to
+   * VK_IMAGE_LAYOUT_GENERAL from their currently tracked layout before compute access outside the
+   * render graph. Pair with `update_image_layout` after the external transition.
+   */
+  VkImageLayout image_layout_get(VkImage vk_image);
+
+  /**
    * Remove an registered image.
    *
    * When a image is destroyed by calling `vmaDestroyImage`, a call to `remove_image` is needed to

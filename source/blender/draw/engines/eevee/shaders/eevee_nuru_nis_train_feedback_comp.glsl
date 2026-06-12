@@ -40,7 +40,7 @@ void main()
   if (entry_index >= entry_count) {
     return;
   }
-  if (uniform_buf.raytrace.hardware_nis_enable == 0) {
+  if (!uniform_buf.raytrace.hardware_nis_enable) {
     return;
   }
   const uint base = 8u + entry_index * 8u;

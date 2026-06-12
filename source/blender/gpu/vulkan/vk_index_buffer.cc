@@ -84,8 +84,11 @@ void VKIndexBuffer::bind_as_ssbo(uint binding)
 
 void VKIndexBuffer::read(uint32_t *data) const
 {
+  /* Nuru: Resolve subranges to the source buffer owning the device storage. `buffer_` of a
+   * subrange is never allocated; reading it would enqueue a copy from a null VkBuffer. The
+   * caller-visible `index_start_get()` already offsets into the source storage. */
   VKContext &context = *VKContext::get();
-  VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::DeviceToHost);
+  VKStagingBuffer staging_buffer(buffer_get(), VKStagingBuffer::Direction::DeviceToHost);
   VKBuffer &buffer = staging_buffer.host_buffer_get();
   if (buffer.is_mapped()) {
     staging_buffer.copy_from_device(context);

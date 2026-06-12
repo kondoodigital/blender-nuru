@@ -310,7 +310,12 @@ static int node_shader_gpu_tex_sky(GPUMaterial *mat,
                              GPU_SAMPLER_EXTEND_MODE_EXTEND};
   float layer;
   float sky_type = (tex->sky_model == SHD_SKY_SINGLE_SCATTERING) ? 0.0f : 1.0f;
-  float sun_disc = tex->sun_disc ? 1.0f : 0.0f;
+  /* Nuru: never render the sun disc in EEVEE. The world-sun extraction
+   * (`world_sky_shadow_direction`) already represents the disc as a real sun light for
+   * lighting/shadows/HWRT; keeping it in the sky would double-count the energy and inject the
+   * (probe-smeared) disc into hardware GI environment sampling, which reads as light bleeding
+   * through walls. Cycles still honors the checkbox. */
+  float sun_disc = (tex->sun_disc && GPU_material_engine(mat) != GPU_MAT_EEVEE) ? 1.0f : 0.0f;
   GPUNodeLink *sky_texture = GPU_image_sky(
       mat, GPU_SKY_WIDTH, GPU_SKY_HEIGHT, pixels.data(), &layer, sampler);
   return GPU_stack_link(mat,

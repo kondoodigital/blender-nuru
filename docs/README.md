@@ -10,10 +10,11 @@ These documents explain how to use Nuru in Blender Eevee. They focus on visible 
 | [UI Reference](nuru_ui_reference.html) | Every visible Nuru Quick Settings control and what it changes. |
 | [Shadows And Lights](nuru_shadows_and_lights.html) | Raytrace Shadows, shadow samples, Transparent Shadows, and Color Transmission. |
 | [Materials](nuru_materials.html) | Material behavior, reflections, refractions, transparent materials, and practical limits. |
+| [Nuru On Windows](nuru_windows.html) | Windows requirements, installation, SmartScreen notes, GPU denoising, and Cycles CUDA/OptiX support. |
 
 ## Quick Path
 
-Open **Render Properties**, set the engine to **Eevee**, enable **Raytracing**, then choose **Method → Nuru Raytracing**. The Nuru **Quick Settings** controls appear when the current hardware supports the Nuru backend.
+Open **Render Properties**, set the engine to **Eevee**, enable **Raytracing**, then choose **Method ΓåÆ Nuru Raytracing**. The Nuru **Quick Settings** controls appear when the current hardware supports the Nuru backend.
 
 Volumetrics, ray-traced GI, shadows, reflections, and refractions all render in the **Rendered** viewport and final frames.
 

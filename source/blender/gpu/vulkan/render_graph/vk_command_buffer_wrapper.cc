@@ -349,4 +349,14 @@ void VKCommandBufferWrapper::end_debug_utils_label()
   }
 }
 
+void VKCommandBufferWrapper::set_checkpoint_marker(const char *marker)
+{
+  /* Nuru: VK_NV_device_diagnostic_checkpoints (wedge diagnostic). The function pointer is only
+   * loaded when the diagnostic is requested and the extension is supported. */
+  const VKDevice &device = VKBackend::get().device;
+  if (device.functions.vkCmdSetCheckpoint) {
+    device.functions.vkCmdSetCheckpoint(vk_command_buffer_, marker);
+  }
+}
+
 }  // namespace blender::gpu::render_graph

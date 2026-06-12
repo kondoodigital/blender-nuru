@@ -739,6 +739,12 @@ endmacro()
 
 if(UNIX AND NOT APPLE)
 
+  if(NOT WITH_PYTHON_MODULE)
+    # Nuru: distributed Linux binary is named `blender-nuru` (matches the macOS
+    # `Blender-Nuru` convention; see the repo distribution rules).
+    set_target_properties(blender PROPERTIES OUTPUT_NAME blender-nuru)
+  endif()
+
   if(PLATFORM_BUNDLED_LIBRARIES AND TARGETDIR_LIB)
     install(
       FILES ${PLATFORM_BUNDLED_LIBRARIES}
@@ -762,7 +768,7 @@ if(UNIX AND NOT APPLE)
 
     # none of the other files are needed currently
   elseif(WITH_INSTALL_PORTABLE)
-    set(BLENDER_BIN "blender")
+    set(BLENDER_BIN "blender-nuru")
     install(
       TARGETS blender
       DESTINATION "."
@@ -825,7 +831,7 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
     endif()
   else()
     # main blender binary
-    set(BLENDER_BIN "bin/blender")
+    set(BLENDER_BIN "bin/blender-nuru")
     install(
       TARGETS blender
       DESTINATION "./bin"
@@ -1050,11 +1056,12 @@ elseif(WIN32)
     install(
       FILES ${CMAKE_BINARY_DIR}/blender.exe.manifest
       DESTINATION "."
+      RENAME Blender-Nuru.exe.manifest
     )
     install(
       FILES ${CMAKE_BINARY_DIR}/blender.exe.manifest
       DESTINATION "."
-      RENAME blender-launcher.exe.manifest
+      RENAME Blender-Nuru-launcher.exe.manifest
     )
   endif()
   windows_install_shared_manifest(
@@ -2085,7 +2092,15 @@ endif()
 # Setup launcher
 
 if(WIN32 AND NOT WITH_PYTHON_MODULE)
-  set(BLENDER_BIN "blender.exe")
+  # Nuru: distributed Windows binaries use the product name (matches macOS `Blender-Nuru` /
+  # Linux `blender-nuru`). The earlier exe-name sensitivity (a renamed binary device-losting
+  # in ~50% of HWRT renders, initially attributed to the NVIDIA per-exe driver profile) was a
+  # timing artifact of the missing `hit_barycentric_tx`/`layered_receiver_barycentric_tx`/HiZ
+  # texture binds fixed in EMERALD 3: with the binds wired, the renamed binary passed a
+  # 45/45-run async HWRT soak (RTX 5090 / driver 610.47).
+  set_target_properties(blender PROPERTIES OUTPUT_NAME Blender-Nuru)
+  set_target_properties(blender-launcher PROPERTIES OUTPUT_NAME Blender-Nuru-launcher)
+  set(BLENDER_BIN "Blender-Nuru.exe")
   install(
     TARGETS blender blender-launcher
     COMPONENT Blender

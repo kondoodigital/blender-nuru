@@ -53,6 +53,10 @@ enum eGPUMaterialEngine {
   GPU_MAT_ENGINE_MAX,
 };
 
+/** Nuru: engine a material is being compiled for (used to suppress the sky sun disc in EEVEE
+ * where the world-sun extraction already represents that energy as a real light). */
+eGPUMaterialEngine GPU_material_engine(const GPUMaterial *mat);
+
 enum GPUMaterialStatus {
   GPU_MAT_FAILED = 0,
   GPU_MAT_QUEUED,

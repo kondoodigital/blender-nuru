@@ -8,7 +8,7 @@ Nuru is built for interactive real-time work. It is not a path tracer, and it is
 
 | Item | Status |
 | --- | --- |
-| Current packaged backend | Metal on macOS (`macos-metal`) |
+| Packaged backends | Metal on macOS (`macos-metal`) and Vulkan on Windows (`windows-vulkan`) |
 | Shared branch | `nuru-core` |
 | macOS branch | `macos-metal` |
 | Windows branch | `windows-vulkan` |
@@ -16,6 +16,8 @@ Nuru is built for interactive real-time work. It is not a path tracer, and it is
 | Recommended macOS hardware | Apple M3 or newer |
 | Recommended macOS version | macOS 14 or newer |
 | Unsupported Apple GPUs | M1 and M2 do not provide the required hardware RT support |
+| Recommended Windows hardware | NVIDIA GeForce RTX (RTX 20 series or newer) with a current driver |
+| Recommended Windows version | Windows 10 or 11, 64-bit; see [Nuru On Windows](nuru_windows.html) |
 
 When Nuru is off, or when a specific Nuru feature is off, Blender falls back to the available Eevee behavior for that feature.
 
@@ -30,7 +32,7 @@ Nuru source is organized so shared behavior and platform-specific backend work d
 | `windows-vulkan` | Windows Vulkan implementation branch, based on the shared core. |
 | `linux-vulkan` | Linux Vulkan implementation branch, based on the shared core. |
 
-Users of the current packaged build should use the macOS Metal path. Windows and Linux Vulkan branches are separate implementation tracks that inherit the same shared Nuru UI and renderer behavior from `nuru-core`.
+Packaged builds are available for macOS (Metal) and Windows (Vulkan, NVIDIA RTX). The Linux Vulkan branch is a separate implementation track that inherits the same shared Nuru UI and renderer behavior from `nuru-core`.
 
 ## Advantages
 
@@ -88,3 +90,4 @@ See [UI Reference](nuru_ui_reference.html) for the full control list.
 - [UI Reference](nuru_ui_reference.html)
 - [Shadows And Lights](nuru_shadows_and_lights.html)
 - [Materials](nuru_materials.html)
+- [Nuru On Windows](nuru_windows.html)

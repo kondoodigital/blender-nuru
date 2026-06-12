@@ -122,9 +122,38 @@ void VKResourceStateTracker::add_buffer(VkBuffer vk_buffer, const char *name)
 
 void VKResourceStateTracker::update_image_layout(VkImage vk_image, VkImageLayout vk_image_layout)
 {
-  ResourceHandle handle = image_resources_.lookup(vk_image);
-  Resource &resource = resources_.lookup(handle);
-  resource.barrier_state.image_layout = vk_image_layout;
+  std::scoped_lock lock(mutex);
+  const ResourceHandle *handle = image_resources_.lookup_ptr(vk_image);
+  if (handle == nullptr) {
+    return;
+  }
+  Resource *resource = resources_.lookup_ptr(*handle);
+  if (resource == nullptr) {
+    return;
+  }
+  resource->barrier_state.image_layout = vk_image_layout;
+  /* The external transition is a full barrier; subsequent render-graph barriers must source from
+   * the widest scope so they still cover any access recorded before the external submission
+   * (e.g. a depth-attachment write the graph performed earlier). Only updating the layout would
+   * make the next graph barrier use a stale, narrower source scope, which under-synchronizes the
+   * transition and corrupts the image under load (observed as SYNC-HAZARD-WRITE-AFTER-WRITE on
+   * the depth buffer and as Xid 109 GPU channel timeouts). */
+  resource->barrier_state.vk_access = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+  resource->barrier_state.vk_pipeline_stages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+}
+
+VkImageLayout VKResourceStateTracker::image_layout_get(VkImage vk_image)
+{
+  std::scoped_lock lock(mutex);
+  const ResourceHandle *handle = image_resources_.lookup_ptr(vk_image);
+  if (handle == nullptr) {
+    return VK_IMAGE_LAYOUT_UNDEFINED;
+  }
+  const Resource *resource = resources_.lookup_ptr(*handle);
+  if (resource == nullptr) {
+    return VK_IMAGE_LAYOUT_UNDEFINED;
+  }
+  return resource->barrier_state.image_layout;
 }
 
 /** \} */

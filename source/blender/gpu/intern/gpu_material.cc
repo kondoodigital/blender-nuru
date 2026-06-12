@@ -374,6 +374,11 @@ eGPUMaterialFlag GPU_material_flag(const GPUMaterial *mat)
   return mat->flag;
 }
 
+eGPUMaterialEngine GPU_material_engine(const GPUMaterial *mat)
+{
+  return mat->engine;
+}
+
 void GPU_material_flag_set(GPUMaterial *mat, eGPUMaterialFlag flag)
 {
   if ((flag & GPU_MATFLAG_GLOSSY) && (mat->flag & GPU_MATFLAG_GLOSSY)) {

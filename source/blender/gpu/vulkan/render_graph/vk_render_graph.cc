@@ -102,7 +102,8 @@ void VKRenderGraph::debug_print(NodeHandle node_handle) const
 
 std::string VKRenderGraph::full_debug_group(NodeHandle node_handle) const
 {
-  if ((G.debug & G_DEBUG_GPU) == 0) {
+  /* Nuru: groups are also tracked when the checkpoint wedge diagnostic is active. */
+  if ((G.debug & G_DEBUG_GPU) == 0 && !vk_diagnostic_checkpoints_requested()) {
     return std::string();
   }
 
