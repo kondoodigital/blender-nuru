@@ -4,6 +4,12 @@
 <div align="center">
   <img src="images/nuru_logo_512.png" alt="Nuru, hardware ray tracing for Blender Eevee by Kondoo Digital" width="512">
 
+  <p>
+    <a href="https://vimeo.com/1195782891" title="Blender Nuru Demo"><img src="https://i.vimeocdn.com/video/2161734263-565930f305f1aeb3a15054953f9fa840c701b51988f221ead59ff318abd881f6-d_1280" alt="Blender Nuru Demo video" width="720"></a>
+    <br>
+    <a href="https://vimeo.com/1195782891"><strong>&#9654; Watch the Blender Nuru demo on Vimeo</strong></a>
+  </p>
+
   <p><strong>Hardware ray tracing for Blender Eevee, built for responsive real-time work.</strong></p>
   <p><em>Nuru</em> means <strong>light</strong> in Swahili.</p>
   <p>A Blender branch by <strong>Kondoo Digital GmbH</strong>.</p>
