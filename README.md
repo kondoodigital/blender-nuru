@@ -1,0 +1,125 @@
+<!-- SPDX-FileCopyrightText: 2026 Kondoo Digital GmbH -->
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+
+<div align="center">
+  <img src="images/nuru_logo_512.png" alt="Nuru, hardware ray tracing for Blender Eevee by Kondoo Digital" width="512">
+
+  <p><strong>Hardware ray tracing for Blender Eevee, built for responsive real-time work.</strong></p>
+  <p><em>Nuru</em> means <strong>light</strong> in Swahili.</p>
+  <p>A Blender branch by <strong>Kondoo Digital GmbH</strong>.</p>
+
+  <p>
+    <a href="#what-nuru-is">What Nuru Is</a> |
+    <a href="#how-to-use-nuru">How To Use</a> |
+    <a href="#main-controls">Main Controls</a> |
+    <a href="#multi-os-branches">Multi-OS Branches</a> |
+    <a href="#current-limits">Current Limits</a> |
+    <a href="#documentation">Docs</a>
+  </p>
+</div>
+
+## What Nuru Is
+
+**Nuru** adds a **Nuru Raytracing** method to Blender Eevee. It lets artists choose which parts of the render use hardware ray tracing: global illumination, shadows, reflections, and refractions.
+
+Nuru is a hybrid real-time renderer. It is designed for interactive viewport feedback in Eevee, not as a replacement for Cycles.
+
+| Area | Status |
+| --- | --- |
+| Current packaged backend | Metal on macOS (`macos-metal`) |
+| Shared source branch | `nuru-core` |
+| macOS implementation branch | `macos-metal` |
+| Windows implementation branch | `windows-vulkan` |
+| Linux implementation branch | `linux-vulkan` |
+| Recommended macOS hardware | Apple M3 or newer |
+| Recommended macOS version | macOS 14 or newer |
+| Unsupported Apple GPUs | M1 and M2 do not provide the required hardware RT support |
+
+## Why Use Nuru
+
+Nuru is strongest when you need fast, stable images while working or rendering animation.
+
+- **High-resolution output:** At 4K and above, Nuru can keep expensive RT work at a lower internal **Resolution** while still producing a high-resolution final image. The Resolution setting applies to every traced effect, including reflections and refractions.
+- **True materials in reflections:** Mirrors and refractive surfaces show the real material of what they reflect — image textures, UV maps, and mixed shader setups stay intact in the reflection.
+- **Volumetrics:** Object and world volumes render in viewport and final frames, including lit fog and sun shafts through windows.
+- **Animation stability:** Integrated denoising and temporal accumulation help reduce frame-to-frame noise shimmer that can appear in low-sample path-traced animation.
+- **Fast repeated frames:** After the first warm-up, animation frames can progress quickly because Nuru traces selected effects instead of path tracing every light path from scratch.
+- **Interactive look development:** The **Rendered** viewport and final render use the same Nuru lighting path, so lighting and material decisions carry over reliably.
+- **Selective cost:** You can enable only the RT features you need: GI, shadows, reflections, or refractions.
+
+## How To Use Nuru
+
+1. Open **Render Properties**.
+2. Set the render engine to **Eevee**.
+3. Enable **Raytracing**.
+4. Set **Method** to **Nuru Raytracing**.
+5. Use **Quick Settings** to enable the RT features you need.
+
+Nuru runs in **Rendered** viewport and final render. **Material Preview** uses Blender's standard preview path.
+
+## Main Controls
+
+| Control | What it does |
+| --- | --- |
+| **Resolution** | Sets the trace resolution: 100%, 75%, 50%, or 25%. Lower values are faster. |
+| **Global Illumination** | Enables diffuse hardware-traced indirect light. |
+| **GI Spatial** | Increases spatial reuse for smoother diffuse GI. |
+| **Raytrace Reflections** | Enables Full RT reflections. |
+| **Raytrace Refractions** | Enables Full RT refractions and transmission. |
+| **Bounces** | Sets how many reflection or refraction events can continue. |
+| **Raytrace Shadows** | Uses hardware ray tracing for shadow visibility. |
+| **Samples** | Controls the quality of soft RT shadows. |
+| **Transparent Shadows** | Controls how much transparent material affects shadow strength. |
+| **Color Transmission** | Controls how strongly transparent materials tint shadows. |
+| **Indirect Light** | Adjusts global indirect light strength. |
+| **Indirect Clamp** | Reduces extreme indirect highlights and fireflies. |
+| **Denoise** | Controls the viewport denoising options shown in Quick Settings. |
+
+For the full UI reference, see [`docs/nuru_ui_reference.html`](docs/nuru_ui_reference.html).
+
+## Multi-OS Branches
+
+Nuru now uses a shared-core plus thin platform-branch model:
+
+| Branch | Purpose |
+| --- | --- |
+| `nuru-core` | Shared Nuru UI, RNA/DNA, material behavior, Eevee orchestration, docs, and backend-neutral hardware ray tracing API. |
+| `macos-metal` | Apple Metal hardware ray tracing implementation, macOS app bundle, and macOS build/test helper changes. |
+| `windows-vulkan` | Windows Vulkan implementation branch, based on `nuru-core`. |
+| `linux-vulkan` | Linux Vulkan implementation branch, based on `nuru-core`. |
+
+The current user-facing build is still the macOS Metal build. Windows and Linux development should take shared behavior from `nuru-core` and keep platform-specific Vulkan code on their own branches.
+
+## Current Limits
+
+- Nuru is not active in **Material Preview**.
+- Some complex material graphs may need adjustment for stable RT results.
+- Rough reflections soften texture detail by design; keep the trace **Resolution** at 100% for the sharpest mirrors or lower it for speed.
+- Nuru is not a path tracer and is not intended to match Cycles feature-for-feature.
+
+## macOS Download Note
+
+If your macOS build is unsigned and not notarized, Gatekeeper may report that `Blender-Nuru.app` is damaged. Remove quarantine from the app bundle:
+
+```sh
+xattr -dr com.apple.quarantine /path/to/Blender-Nuru.app
+```
+
+## Documentation
+
+Start with [`docs/README.html`](docs/README.html).
+
+- [`docs/nuru_overview.html`](docs/nuru_overview.html) explains Nuru at a high level.
+- [`docs/nuru_ui_reference.html`](docs/nuru_ui_reference.html) documents the visible UI controls.
+- [`docs/nuru_shadows_and_lights.html`](docs/nuru_shadows_and_lights.html) explains RT shadows and transparent shadow controls.
+- [`docs/nuru_materials.html`](docs/nuru_materials.html) explains material expectations and current limits.
+
+## Upstream Blender Links
+
+- [Blender Website](https://www.blender.org)
+- [Blender Manual](https://docs.blender.org/manual/en/latest/index.html)
+- [Blender Developer Documentation](https://developer.blender.org/docs/)
+
+## License
+
+Nuru documentation and Kondoo Digital additions are provided under Blender's GPL license. Blender as a whole is licensed under the GNU General Public License. See [blender.org/about/license](https://www.blender.org/about/license) for details.

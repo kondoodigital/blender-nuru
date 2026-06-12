@@ -1,0 +1,73 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Kondoo Digital GmbH -->
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuru Materials</title>
+  <link rel="stylesheet" href="nuru_docs.css">
+</head>
+<body>
+<main>
+  <section class="hero">
+    <p class="eyebrow">Nuru Documentation</p>
+    <h1>Materials</h1>
+    <p class="lede">Nuru works with Eevee materials and adds hardware ray tracing for selected lighting paths. Most ordinary materials work as expected, but complex material node setups should be checked in <strong>Rendered</strong> viewport.</p>
+    <nav class="nav" aria-label="Documentation navigation">
+      <a href="README.html">Docs Home</a>
+      <a href="nuru_overview.html">Overview</a>
+      <a href="nuru_ui_reference.html">UI Reference</a>
+      <a href="nuru_shadows_and_lights.html">Shadows And Lights</a>
+    </nav>
+  </section>
+
+  <h2>Reflections</h2>
+  <p>Enable <strong>Raytrace Reflections</strong> when reflective materials need hardware ray tracing.</p>
+  <p>Reflection quality depends on the material roughness, scene content, and the <strong>Bounces</strong> value. Higher bounce counts can show deeper mirror chains, but they cost more time.</p>
+
+  <h2>Materials Seen In Reflections</h2>
+  <p>Surfaces visible inside mirrors and refractive objects are shaded with their real material:</p>
+  <ul>
+    <li>Image textures and UV maps stay intact in the reflection.</li>
+    <li>Color-processing nodes (Mix, Overlay, and similar) between a texture and the shader are respected.</li>
+    <li>Mixed shader setups such as <strong>Mix Shader (Diffuse, Glossy)</strong> show their textured diffuse appearance in mirrors.</li>
+    <li>Objects with multiple material slots reflect each material correctly.</li>
+  </ul>
+  <p>The reflection's sharpness follows the trace <strong>Resolution</strong> setting: 100% gives the sharpest mirror detail, lower values trade detail for speed.</p>
+
+  <h2>Refractions And Transmission</h2>
+  <p>Enable <strong>Raytrace Refractions</strong> for glass, refractive materials, and transmission effects.</p>
+  <p>The <strong>Bounces</strong> value controls how far refraction can continue through layered transparent or refractive surfaces. If glass looks incomplete, try increasing the bounce count before changing the material.</p>
+
+  <h2>Transparent Shadows</h2>
+  <p>Transparent and tinted materials can affect shadows when <strong>Raytrace Shadows</strong> is enabled.</p>
+  <table>
+    <tr><th>Control</th><th>Material effect</th></tr>
+    <tr><td><strong>Transparent Shadows</strong></td><td>Controls how much transparency changes the shadow strength.</td></tr>
+    <tr><td><strong>Color Transmission</strong></td><td>Controls how much material color appears in the shadow tint.</td></tr>
+  </table>
+  <p>These controls are especially useful for colored glass, transparent textures, and alpha materials.</p>
+
+  <h2>Thin Glass</h2>
+  <p>The <strong>Thin Glass BSDF</strong> renders single-pane glass (windows, display cases) without refraction offsets. Thin Glass never casts ray-traced shadows: light passes through panes at full strength, so window glass does not darken a sun-lit room.</p>
+
+  <h2>Practical Material Expectations</h2>
+  <ul>
+    <li>Nuru is based on Eevee material behavior, not Cycles material parity.</li>
+    <li>Simple Principled, glass, glossy, transparent, and textured materials are the best starting point.</li>
+    <li>Very complex layered node graphs may need simplification for predictable RT results.</li>
+    <li>Some advanced material features can look different from Cycles.</li>
+    <li>Check reflective and refractive materials in <strong>Rendered</strong> viewport, not <strong>Material Preview</strong>.</li>
+  </ul>
+
+  <h2>Rough Materials</h2>
+  <p>Rough reflective and refractive materials may soften texture detail in the RT result. This is expected: rough surfaces spread reflected or transmitted detail instead of showing a sharp texture copy.</p>
+
+  <h2>Volumes</h2>
+  <p>Volumetric materials and world volumes render in Nuru: object fog, world atmosphere, lit fog with shadowed light shafts, and volume absorption all work in the Rendered viewport and final frames.</p>
+
+  <p class="footer">Markdown source: <a href="nuru_materials.md">nuru_materials.md</a></p>
+</main>
+</body>
+</html>

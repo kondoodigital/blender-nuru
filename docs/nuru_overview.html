@@ -1,0 +1,125 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Kondoo Digital GmbH -->
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuru Overview</title>
+  <link rel="stylesheet" href="nuru_docs.css">
+</head>
+<body>
+<main>
+  <section class="hero">
+    <p class="eyebrow">Nuru Documentation</p>
+    <h1>Nuru Overview</h1>
+    <p class="lede">Nuru is Kondoo Digital's hardware ray tracing mode for Blender Eevee. It adds <strong>Nuru Raytracing</strong> as a ray tracing method and gives artists direct controls for global illumination, shadows, reflections, and refractions.</p>
+    <nav class="nav" aria-label="Documentation navigation">
+      <a href="README.html">Docs Home</a>
+      <a href="nuru_ui_reference.html">UI Reference</a>
+      <a href="nuru_shadows_and_lights.html">Shadows And Lights</a>
+      <a href="nuru_materials.html">Materials</a>
+    </nav>
+  </section>
+
+  <p>Nuru is built for interactive real-time work. It is not a path tracer, and it is not intended to match Cycles feature-for-feature.</p>
+
+  <h2>Platform</h2>
+  <table>
+    <tr><th>Item</th><th>Status</th></tr>
+    <tr><td>Current packaged backend</td><td>Metal on macOS (<code>macos-metal</code>)</td></tr>
+    <tr><td>Shared branch</td><td><code>nuru-core</code></td></tr>
+    <tr><td>macOS branch</td><td><code>macos-metal</code></td></tr>
+    <tr><td>Windows branch</td><td><code>windows-vulkan</code></td></tr>
+    <tr><td>Linux branch</td><td><code>linux-vulkan</code></td></tr>
+    <tr><td>Recommended macOS hardware</td><td>Apple M3 or newer</td></tr>
+    <tr><td>Recommended macOS version</td><td>macOS 14 or newer</td></tr>
+    <tr><td>Unsupported Apple GPUs</td><td>M1 and M2 do not provide the required hardware RT support</td></tr>
+  </table>
+  <p>When Nuru is off, or when a specific Nuru feature is off, Blender falls back to the available Eevee behavior for that feature.</p>
+
+  <h2>Multi-OS Branch Model</h2>
+  <p>Nuru source is organized so shared behavior and platform-specific backend work do not mix.</p>
+  <table>
+    <tr><th>Branch</th><th>Contents</th></tr>
+    <tr><td><code>nuru-core</code></td><td>Shared Nuru UI, RNA/DNA, materials, Eevee orchestration, docs, and backend-neutral hardware ray tracing API.</td></tr>
+    <tr><td><code>macos-metal</code></td><td>Metal hardware ray tracing implementation, macOS app bundle, and macOS build/test helper changes.</td></tr>
+    <tr><td><code>windows-vulkan</code></td><td>Windows Vulkan implementation branch, based on the shared core.</td></tr>
+    <tr><td><code>linux-vulkan</code></td><td>Linux Vulkan implementation branch, based on the shared core.</td></tr>
+  </table>
+  <p>Users of the current packaged build should use the macOS Metal path. Windows and Linux Vulkan branches are separate implementation tracks that inherit the same shared Nuru UI and renderer behavior from <code>nuru-core</code>.</p>
+
+  <h2>Advantages</h2>
+  <p>Nuru is designed for scenes where speed, interactivity, and animation stability matter.</p>
+  <div class="grid">
+    <article class="card">
+      <h3>High-resolution rendering</h3>
+      <p>For 4K and larger output, Nuru can use reduced internal RT resolution while preserving the final image size. The <strong>Resolution</strong> setting applies to every traced effect, including reflections and refractions.</p>
+    </article>
+    <article class="card">
+      <h3>True materials in reflections</h3>
+      <p>Mirrors and refractive surfaces show the real material of what they reflect: image textures, UV maps, and mixed shader setups stay intact in the reflection.</p>
+    </article>
+    <article class="card">
+      <h3>Stable animation frames</h3>
+      <p>Denoising and temporal accumulation can reduce frame-to-frame shimmer compared with low-sample path-traced animation.</p>
+    </article>
+    <article class="card">
+      <h3>Fast warmed-up playback and rendering</h3>
+      <p>After the first warm-up, repeated frames can progress quickly because Nuru traces selected effects instead of every possible light path.</p>
+    </article>
+    <article class="card">
+      <h3>Viewport-to-final consistency</h3>
+      <p>The Rendered viewport and final render use the same Nuru lighting path, so what you tune in the viewport carries into the saved frame.</p>
+    </article>
+    <article class="card">
+      <h3>Selective ray tracing</h3>
+      <p>GI, shadows, reflections, and refractions can be enabled independently, so you only pay for what the scene needs.</p>
+    </article>
+    <article class="card">
+      <h3>Volumetrics</h3>
+      <p>Object and world volumes render in viewport and final frames, including lit fog and sun shafts.</p>
+    </article>
+  </div>
+
+  <h2>Basic Workflow</h2>
+  <ol>
+    <li>Open <strong>Render Properties</strong>.</li>
+    <li>Set the render engine to <strong>Eevee</strong>.</li>
+    <li>Enable <strong>Raytracing</strong>.</li>
+    <li>Set <strong>Method</strong> to <strong>Nuru Raytracing</strong>.</li>
+    <li>Use <strong>Quick Settings</strong> to control the RT features.</li>
+  </ol>
+  <p>Nuru is intended for <strong>Rendered</strong> viewport and final render. <strong>Material Preview</strong> uses Blender's standard preview path.</p>
+
+  <h2>Quick Settings Summary</h2>
+  <table>
+    <tr><th>Control</th><th>Role</th></tr>
+    <tr><td><strong>Resolution</strong></td><td>Sets Nuru trace resolution: 100%, 75%, 50%, or 25%.</td></tr>
+    <tr><td><strong>Global Illumination</strong></td><td>Enables diffuse hardware-traced indirect light.</td></tr>
+    <tr><td><strong>GI Spatial</strong></td><td>Smooths diffuse GI by reusing nearby information.</td></tr>
+    <tr><td><strong>Raytrace Reflections</strong></td><td>Enables Full RT reflections.</td></tr>
+    <tr><td><strong>Reflection Bounces</strong></td><td>Sets how many reflection events can continue.</td></tr>
+    <tr><td><strong>Raytrace Refractions</strong></td><td>Enables Full RT refractions and transmission.</td></tr>
+    <tr><td><strong>Refraction Bounces</strong></td><td>Sets how many refraction events can continue.</td></tr>
+    <tr><td><strong>Raytrace Shadows</strong></td><td>Enables hardware ray-traced shadows.</td></tr>
+    <tr><td><strong>Samples</strong></td><td>Controls soft shadow quality.</td></tr>
+    <tr><td><strong>Transparent Shadows</strong></td><td>Controls how transparency affects shadow strength.</td></tr>
+    <tr><td><strong>Color Transmission</strong></td><td>Controls how strongly transparent materials tint shadows.</td></tr>
+    <tr><td><strong>Indirect Light</strong></td><td>Adjusts indirect light strength.</td></tr>
+    <tr><td><strong>Indirect Clamp</strong></td><td>Limits very bright indirect lighting.</td></tr>
+    <tr><td><strong>Denoise</strong></td><td>Controls the denoising options shown in Quick Settings.</td></tr>
+  </table>
+  <p>See <a href="nuru_ui_reference.html">UI Reference</a> for the full control list.</p>
+
+  <h2>Current Limits</h2>
+  <ul>
+    <li>Nuru does not run in <strong>Material Preview</strong>.</li>
+    <li>Some complex material graphs may need adjustment for stable RT results.</li>
+    <li>Rough reflections soften texture detail by design; lower the trace <strong>Resolution</strong> for speed or keep it at 100% for the sharpest mirrors.</li>
+  </ul>
+
+  <p class="footer">Markdown source: <a href="nuru_overview.md">nuru_overview.md</a></p>
+</main>
+</body>
+</html>
