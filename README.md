@@ -15,6 +15,7 @@
   <p>A Blender branch by <strong>Kondoo Digital GmbH</strong>.</p>
 
   <p>
+    <a href="https://kondoodigital.github.io/blender-nuru/"><strong>Website</strong></a> |
     <a href="#what-nuru-is">What Nuru Is</a> |
     <a href="#how-to-use-nuru">How To Use</a> |
     <a href="#main-controls">Main Controls</a> |
@@ -135,23 +136,26 @@ xattr -dr com.apple.quarantine /path/to/Blender-Nuru.app
 
 ## Windows Download Note
 
-The Windows build is unsigned, so the first start may show **"Windows protected your PC"** (SmartScreen). Click **More info**, then **Run anyway**. Unzip the package anywhere and start `Blender-Nuru.exe`; see [`docs/nuru_windows.html`](docs/nuru_windows.html) for requirements and details.
+The Windows build is unsigned, so the first start may show **"Windows protected your PC"** (SmartScreen). Click **More info**, then **Run anyway**. Unzip the package anywhere and start `Blender-Nuru.exe`; see [Nuru On Windows](https://kondoodigital.github.io/blender-nuru/docs/nuru_windows.html) for requirements and details.
 
 ## Linux Download Note
 
-Install the `.deb` with `sudo apt install ./Blender-Nuru-linux-<version>.deb` (Ubuntu 22.04+ / Debian 12+), or unpack the portable `.tar.gz` anywhere and start `./blender-nuru`. Nuru hardware ray tracing needs the NVIDIA proprietary driver, 595 series or newer; see [`docs/nuru_linux.html`](docs/nuru_linux.html) for requirements and details.
+Install the `.deb` with `sudo apt install ./Blender-Nuru-linux-<version>.deb` (Ubuntu 22.04+ / Debian 12+), or unpack the portable `.tar.gz` anywhere and start `./blender-nuru`. Nuru hardware ray tracing needs the NVIDIA proprietary driver, 595 series or newer; see [Nuru On Linux](https://kondoodigital.github.io/blender-nuru/docs/nuru_linux.html) for requirements and details.
 
 ## Documentation
 
-Start with [`docs/README.html`](docs/README.html).
+Browse the documentation website: [kondoodigital.github.io/blender-nuru](https://kondoodigital.github.io/blender-nuru/) — every page below renders there directly.
 
-- [`docs/nuru_overview.html`](docs/nuru_overview.html) explains Nuru at a high level.
-- [`docs/nuru_ui_reference.html`](docs/nuru_ui_reference.html) documents the visible UI controls.
-- [`docs/nuru_shadows_and_lights.html`](docs/nuru_shadows_and_lights.html) explains RT shadows and transparent shadow controls.
-- [`docs/nuru_materials.html`](docs/nuru_materials.html) explains material expectations and current limits.
-- [`docs/nuru_dos_and_donts.html`](docs/nuru_dos_and_donts.html) is the practical dos-and-don'ts guide for materials and settings.
-- [`docs/nuru_macos.html`](docs/nuru_macos.html) covers macOS requirements, installation, and platform notes.
-- [`docs/nuru_windows.html`](docs/nuru_windows.html) covers Windows requirements, installation, and platform notes.
+- [Nuru Overview](https://kondoodigital.github.io/blender-nuru/docs/nuru_overview.html) explains Nuru at a high level.
+- [UI Reference](https://kondoodigital.github.io/blender-nuru/docs/nuru_ui_reference.html) documents the visible UI controls.
+- [Shadows And Lights](https://kondoodigital.github.io/blender-nuru/docs/nuru_shadows_and_lights.html) explains RT shadows and transparent shadow controls.
+- [Materials](https://kondoodigital.github.io/blender-nuru/docs/nuru_materials.html) explains material expectations and current limits.
+- [Dos And Don'ts](https://kondoodigital.github.io/blender-nuru/docs/nuru_dos_and_donts.html) is the practical dos-and-don'ts guide for materials and settings.
+- [Nuru On macOS](https://kondoodigital.github.io/blender-nuru/docs/nuru_macos.html) covers macOS requirements, installation, and platform notes.
+- [Nuru On Windows](https://kondoodigital.github.io/blender-nuru/docs/nuru_windows.html) covers Windows requirements, installation, and platform notes.
+- [Nuru On Linux](https://kondoodigital.github.io/blender-nuru/docs/nuru_linux.html) covers Linux requirements, installation, and platform notes.
+
+The same pages ship inside every download under `docs/`.
 - [`docs/nuru_linux.html`](docs/nuru_linux.html) covers Linux requirements, installation, and platform notes.
 
 ## Upstream Blender Links
