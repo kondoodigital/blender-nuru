@@ -36,7 +36,7 @@
     </tr>
   </table>
 
-  <p>The builds are unsigned: installation and first-start notes (SmartScreen, Gatekeeper) are on the documentation site.</p>
+  <p>The builds are unsigned: see <a href="#install-on-windows">Install On Windows</a> and <a href="#install-on-macos">Install On macOS</a> below, or the platform pages on the documentation site.</p>
 </div>
 
 ## Nuru
@@ -55,6 +55,30 @@ Nuru is a hybrid real-time renderer built for interactive viewport work and fast
 - **Animation stability** — integrated denoising and temporal accumulation keep sequences calm at low sample counts.
 - **Denoiser choice** — OpenImageDenoise or the NVIDIA OptiX denoiser (Windows), both zero-copy in the same pipeline.
 - **Many lights welcome** — light selection scales to scenes full of practicals and fixtures.
+
+## Install On Windows
+
+**Installer (recommended):** download and run `Blender-Nuru-windows-<version>.exe`. The wizard shows the GPL license, lets you pick the install folder, and creates Start Menu and Desktop shortcuts. Uninstall any time from **Settings > Apps**. If SmartScreen warns about an unrecognized app, choose **More info > Run anyway**.
+
+**Portable zip:**
+
+1. Download the Windows zip and unzip it anywhere you like, for example `C:\Programs\Blender-Nuru`.
+2. Start `Blender-Nuru.exe`, or `Blender-Nuru-launcher.exe` to start without a console window.
+
+Full Windows notes: [Nuru On Windows](https://kondoodigital.github.io/blender-nuru/docs/nuru_windows.html).
+
+## Install On macOS
+
+1. Download the macOS zip, unzip it, and move `Blender-Nuru.app` to `/Applications`.
+2. macOS marks downloaded apps with a quarantine flag, and Blender-Nuru is not distributed through Apple notarization. Clear the flag once in **Terminal**:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/Blender-Nuru.app
+```
+
+3. Start **Blender-Nuru** from Applications or Launchpad.
+
+Full macOS notes: [Nuru On macOS](https://kondoodigital.github.io/blender-nuru/docs/nuru_macos.html).
 
 ## Documentation
 
