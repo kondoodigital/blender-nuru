@@ -1,0 +1,80 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Kondoo Digital GmbH -->
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuru On macOS</title>
+  <link rel="stylesheet" href="nuru_docs.css">
+</head>
+<body>
+<main>
+  <section class="hero">
+    <p class="eyebrow">Nuru Documentation</p>
+    <h1>Nuru On macOS</h1>
+    <p class="lede">Blender-Nuru for macOS runs Eevee on the Metal graphics backend with Nuru hardware ray tracing on Apple Silicon. This page covers requirements, installation, and macOS-specific notes.</p>
+    <nav class="nav" aria-label="Documentation navigation">
+      <a href="README.html">Docs Home</a>
+      <a href="nuru_overview.html">Overview</a>
+      <a href="nuru_ui_reference.html">UI Reference</a>
+      <a href="nuru_shadows_and_lights.html">Shadows And Lights</a>
+      <a href="nuru_materials.html">Materials</a>
+      <a href="nuru_dos_and_donts.html">Dos And Don'ts</a>
+      <a href="nuru_windows.html">Windows</a>
+    </nav>
+  </section>
+
+  <h2>Requirements</h2>
+  <table>
+    <tr><th>Item</th><th>Requirement</th></tr>
+    <tr><td>Operating system</td><td>macOS 14 or newer</td></tr>
+    <tr><td>Hardware</td><td>Apple Silicon M3 or newer</td></tr>
+    <tr><td>Unsupported hardware</td><td>M1 and M2 do not provide the required hardware ray tracing support; Intel Macs are not supported</td></tr>
+    <tr><td>Graphics backend</td><td>Metal, built into the package; no extra setup is needed</td></tr>
+  </table>
+
+  <h2>Install</h2>
+  <ol>
+    <li>Download the macOS zip from the <a href="https://github.com/kondoodigital/blender-nuru/releases">Releases page</a>.</li>
+    <li>Unzip it and move <strong><code>Blender-Nuru.app</code></strong> to <strong><code>/Applications</code></strong>.</li>
+    <li>Start <strong>Blender-Nuru</strong> from Applications or Launchpad.</li>
+  </ol>
+
+  <h3>Gatekeeper</h3>
+  <p class="note">The build is not code-signed, so Gatekeeper may report the app as damaged on first start. Remove the quarantine attribute once from a terminal:</p>
+  <pre><code>xattr -dr com.apple.quarantine /Applications/Blender-Nuru.app</code></pre>
+
+  <h2>Enable Nuru</h2>
+  <ol>
+    <li>Open <strong>Render Properties</strong>.</li>
+    <li>Set the render engine to <strong>Eevee</strong>.</li>
+    <li>Enable <strong>Raytracing</strong>.</li>
+    <li>Set <strong>Method</strong> to <strong>Nuru Raytracing</strong>.</li>
+    <li>Use <strong>Quick Settings</strong> to enable the RT features you need.</li>
+  </ol>
+  <p>The Nuru <strong>Quick Settings</strong> appear when the active Mac supports the Nuru backend. If they stay hidden, confirm the machine is an Apple Silicon M3 or newer on macOS 14 or newer.</p>
+
+  <h2>GPU Denoising</h2>
+  <p>Denoising on macOS runs through <strong>OpenImageDenoise</strong> on the GPU. The <strong>Denoiser</strong> option's <strong>OptiX Denoiser</strong> entry is NVIDIA-only; selecting it on a Mac simply keeps OpenImageDenoise active, so the setting is always safe to touch.</p>
+
+  <h2>Troubleshooting</h2>
+  <table>
+    <tr><th>Symptom</th><th>What to do</th></tr>
+    <tr><td>Nuru Quick Settings do not appear</td><td>Confirm Apple Silicon M3 or newer and macOS 14 or newer. M1/M2 are not supported.</td></tr>
+    <tr><td>Gatekeeper reports the app as damaged</td><td>Run the <code>xattr</code> command above once, then start the app again.</td></tr>
+    <tr><td>The first rendered frame is slow</td><td>Shaders and pipelines warm up on the first render after installation; later frames are much faster.</td></tr>
+  </table>
+
+  <h2>Related</h2>
+  <ul>
+    <li><a href="nuru_overview.html">Nuru Overview</a></li>
+    <li><a href="nuru_ui_reference.html">UI Reference</a></li>
+    <li><a href="nuru_dos_and_donts.html">Dos And Don'ts</a></li>
+    <li><a href="nuru_materials.html">Materials</a></li>
+  </ul>
+
+  <p class="footer">Markdown source: <a href="nuru_macos.md">nuru_macos.md</a></p>
+</main>
+</body>
+</html>

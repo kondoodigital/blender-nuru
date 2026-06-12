@@ -11,6 +11,7 @@ These documents explain how to use Nuru in Blender Eevee. They focus on visible 
 | [Shadows And Lights](nuru_shadows_and_lights.html) | Raytrace Shadows, shadow samples, Transparent Shadows, and Color Transmission. |
 | [Materials](nuru_materials.html) | Material behavior, reflections, refractions, transparent materials, and practical limits. |
 | [Dos And Don'ts](nuru_dos_and_donts.html) | Practical guide: material recipes, the denoiser choice, and the global settings that matter most. |
+| [Nuru On macOS](nuru_macos.html) | macOS requirements, installation, Gatekeeper notes, and Apple Silicon support. |
 | [Nuru On Windows](nuru_windows.html) | Windows requirements, installation, SmartScreen notes, GPU denoising, and Cycles CUDA/OptiX support. |
 
 ## Quick Path
