@@ -60,6 +60,7 @@ When the current Mac supports Nuru, the panel shows the Nuru logo, hardware supp
 
 | Control | What it does |
 | --- | --- |
+| **Denoiser** | Chooses the denoise engine: **OpenImageDenoise** (default) or **OptiX Denoiser** (NVIDIA GPUs). Both run in the same pipeline; OptiX falls back to OpenImageDenoise when unavailable. |
 | **Passes** | Chooses which extra information the denoiser can use. More guidance can improve stability. |
 | **Prefilter** | Sets how the denoiser prepares its inputs before denoising. |
 | **Quality** | Balances denoising quality and performance. |

@@ -759,6 +759,21 @@ static const EnumPropertyItem eevee_denoise_filter_items[] = {
     {0, nullptr, 0, nullptr, nullptr},
 };
 
+static const EnumPropertyItem eevee_denoise_backend_items[] = {
+    {RAYTRACE_EEVEE_DENOISE_BACKEND_OIDN,
+     "OIDN",
+     0,
+     "OpenImageDenoise",
+     "Use the OpenImageDenoise filter for the final Hardware RT ray result"},
+    {RAYTRACE_EEVEE_DENOISE_BACKEND_OPTIX,
+     "OPTIX",
+     0,
+     "OptiX Denoiser",
+     "Use the NVIDIA OptiX denoiser for the final Hardware RT ray result. NVIDIA RTX with the "
+     "Vulkan backend only; falls back to OpenImageDenoise when unavailable"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
 static const EnumPropertyItem eevee_denoise_input_pass_items[] = {
     {RAYTRACE_EEVEE_DENOISE_INPUT_RGB,
      "RGB",
@@ -8563,6 +8578,17 @@ static void rna_def_raytrace_eevee(BlenderRNA *brna)
       "Denoiser",
       "Deprecated in Nuru: OpenImageDenoise is the only Hardware RT denoiser");
   RNA_def_property_flag(prop, PROP_HIDDEN);
+  RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "denoise_backend", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "denoise_backend");
+  RNA_def_property_enum_items(prop, eevee_denoise_backend_items);
+  RNA_def_property_ui_text(
+      prop,
+      "Denoiser",
+      "Engine used for the final Hardware RT denoise filter. The denoise pipeline is identical "
+      "for both; only the filter backend differs");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 

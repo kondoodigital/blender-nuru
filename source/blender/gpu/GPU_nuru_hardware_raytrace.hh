@@ -310,6 +310,10 @@ struct GPUHardwareRaytraceOIDNDenoiseParams {
   bool use_albedo = false;
   bool use_normal = false;
   bool use_gpu = true;
+  /* Route the filter step through the NVIDIA OptiX denoiser instead of the OIDN filter.
+   * Vulkan/NVIDIA only; pack/unpack kernels, shared buffers, and call sites are unchanged.
+   * Backends without OptiX support ignore this and run OIDN. */
+  bool use_optix_denoiser = false;
   int quality = 2;
   int prefilter = 2;
 };

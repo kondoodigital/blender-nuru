@@ -3,7 +3,7 @@
 This repository publishes the complete corresponding source for the Blender-Nuru public source snapshot.
 
 - Exact Nuru source commit (macOS binary): `be4bb28fa8ba1855f02d67018c3fe63b9b9b67e1`
-- Exact Nuru source commit (Windows binary): `01f255f7716930412b6e8bfd2c5f574d94d69c13`
+- Exact Nuru source commit (Windows binary): `b83ce6bd7424ebb0cb6bae7ec9cbc3344af6fcba`
 - Public source snapshot: `Blender-Nuru 5.1.1-0.9.8 public source snapshot` plus the
   `Blender-Nuru 5.1.1-0.9.8 Windows public source update` (tag `v5.1.1-0.9.8-windows`).
 - Runtime and build-required source assets, including the macOS prebuilt

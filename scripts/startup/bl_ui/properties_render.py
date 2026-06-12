@@ -531,6 +531,8 @@ class RENDER_PT_eevee_raytracing(RenderButtonsPanel, Panel):
             section = quick_col.column(align=True)
             section.label(text="Denoise")
             sub = section.row(align=True)
+            sub.prop(options, "denoise_backend", text="Denoiser")
+            sub = section.row(align=True)
             sub.prop(options, "denoise_input_passes", text="Passes")
             sub = section.row(align=True)
             sub.prop(options, "denoise_prefilter", text="Prefilter")

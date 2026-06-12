@@ -4208,6 +4208,8 @@ RayTraceResult RayTraceModule::render_shared_oidn(RayTraceBuffer &rt_buffer,
     oidn_params.use_normal = options.denoise_input_passes >=
                              RAYTRACE_EEVEE_DENOISE_INPUT_RGB_ALBEDO_NORMAL;
     oidn_params.use_gpu = options.denoise_use_gpu != 0;
+    oidn_params.use_optix_denoiser = options.denoise_backend ==
+                                     RAYTRACE_EEVEE_DENOISE_BACKEND_OPTIX;
     oidn_params.quality = options.denoise_quality;
     oidn_params.prefilter = options.denoise_prefilter;
 
@@ -4508,6 +4510,8 @@ RayTraceResultTexture RayTraceModule::trace(
     oidn_params.use_albedo = use_oidn_albedo;
     oidn_params.use_normal = use_oidn_normal;
     oidn_params.use_gpu = options.denoise_use_gpu != 0;
+    oidn_params.use_optix_denoiser = options.denoise_backend ==
+                                     RAYTRACE_EEVEE_DENOISE_BACKEND_OPTIX;
     oidn_params.quality = options.denoise_quality;
     oidn_params.prefilter = options.denoise_prefilter;
 

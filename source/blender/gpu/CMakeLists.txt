@@ -478,6 +478,27 @@ if(WITH_VULKAN_BACKEND)
   )
 
   add_definitions(-DWITH_VULKAN_BACKEND)
+
+  # Nuru OptiX denoiser backend for the HWRT denoise step (Windows/NVIDIA, optional).
+  # Needs the OptiX SDK headers (driver provides nvoptix.dll at runtime) and cuew for the
+  # CUDA driver API. Requires the Cycles OptiX device: it owns the OptiX function table
+  # definition (g_optixFunctionTable) that this backend shares, and it guarantees cuew.
+  if(WIN32 AND WITH_OPENIMAGEDENOISE AND EXISTS "${OPTIX_ROOT_DIR}/include/optix.h")
+    if(WITH_CYCLES AND WITH_CYCLES_DEVICE_OPTIX AND WITH_CUDA_DYNLOAD)
+      list(APPEND SRC
+        vulkan/vk_nuru_optix_denoise.cc
+        vulkan/vk_nuru_optix_denoise.hh
+      )
+      list(APPEND INC_SYS
+        ${OPTIX_ROOT_DIR}/include
+        ../../../extern/cuew/include
+      )
+      list(APPEND LIB
+        PRIVATE extern_cuew
+      )
+      add_definitions(-DWITH_NURU_OPTIX_DENOISER)
+    endif()
+  endif()
 endif()
 
 set(GLSL_SRC

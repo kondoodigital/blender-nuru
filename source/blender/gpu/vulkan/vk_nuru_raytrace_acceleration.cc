@@ -26,6 +26,9 @@
 #include "vk_device.hh"
 #include "vk_index_buffer.hh"
 #include "vk_nuru_raytrace_kernels.hh"
+#ifdef WITH_NURU_OPTIX_DENOISER
+#  include "vk_nuru_optix_denoise.hh"
+#endif
 #include "vk_storage_buffer.hh"
 #include "vk_texture.hh"
 #include "vk_vertex_buffer.hh"
@@ -4249,31 +4252,67 @@ bool raytrace_denoise_oidn(const GPUHardwareRaytraceOIDNDenoiseParams &params)
 
   const size_t width = size_t(params.extent.x);
   const size_t height = size_t(params.extent.y);
-  oidnSetFilterImage(
-      cache.filter, "color", cache.oidn_color, OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
-  oidnSetFilterImage(
-      cache.filter, "output", cache.oidn_output, OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
-  if (use_albedo) {
-    oidnSetFilterImage(
-        cache.filter, "albedo", cache.oidn_albedo, OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
-  }
-  else {
-    oidnUnsetFilterImage(cache.filter, "albedo");
-  }
-  if (use_normal) {
-    oidnSetFilterImage(
-        cache.filter, "normal", cache.oidn_normal, OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
-  }
-  else {
-    oidnUnsetFilterImage(cache.filter, "normal");
-  }
 
-  oidnCommitFilter(cache.filter);
-  if (oidn_report_error(cache.device, "filter commit")) {
-    return false;
+  /* OptiX denoiser branch (user-selected): same packed planes, same zero-copy allocations,
+   * same pack/unpack pipeline - only the filter engine differs. Requires the shared (imported)
+   * buffers; any unavailability or failure falls through to the OIDN filter below. The CUDA
+   * burst runs under the same queue-mutex + drain contract as the GPU OIDN filter (Xid 109,
+   * see the comment on that block). */
+  bool used_optix = false;
+  const double filter_start_time_optix = perf_logging_enabled ? BLI_time_now_seconds() : 0.0;
+#  ifdef WITH_NURU_OPTIX_DENOISER
+  if (params.use_optix_denoiser && cache.buffers_shared && use_gpu_oidn) {
+    VKDevice &device = VKBackend::get().device;
+    std::scoped_lock queue_lock(device.queue_mutex_get());
+    device.wait_for_timeline(device.queue_submitted_timeline_value());
+
+    nuru_optix::DenoiseParams optix_params;
+    optix_params.color = {cache.color_buffer.external_handle, cache.color_buffer.size};
+    optix_params.output = {cache.output_buffer.external_handle, cache.output_buffer.size};
+    if (use_albedo) {
+      optix_params.albedo = {cache.albedo_buffer.external_handle, cache.albedo_buffer.size};
+    }
+    if (use_normal) {
+      optix_params.normal = {cache.normal_buffer.external_handle, cache.normal_buffer.size};
+    }
+    optix_params.width = params.extent.x;
+    optix_params.height = params.extent.y;
+    used_optix = nuru_optix::denoise(optix_params);
   }
-  const double filter_start_time = perf_logging_enabled ? BLI_time_now_seconds() : 0.0;
-  if (use_gpu_oidn) {
+#  endif
+
+  if (!used_optix) {
+    oidnSetFilterImage(
+        cache.filter, "color", cache.oidn_color, OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
+    oidnSetFilterImage(
+        cache.filter, "output", cache.oidn_output, OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
+    if (use_albedo) {
+      oidnSetFilterImage(
+          cache.filter, "albedo", cache.oidn_albedo, OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
+    }
+    else {
+      oidnUnsetFilterImage(cache.filter, "albedo");
+    }
+    if (use_normal) {
+      oidnSetFilterImage(
+          cache.filter, "normal", cache.oidn_normal, OIDN_FORMAT_FLOAT3, width, height, 0, 0, 0);
+    }
+    else {
+      oidnUnsetFilterImage(cache.filter, "normal");
+    }
+
+    oidnCommitFilter(cache.filter);
+    if (oidn_report_error(cache.device, "filter commit")) {
+      return false;
+    }
+  }
+  const double filter_start_time = used_optix ?
+                                       filter_start_time_optix :
+                                       (perf_logging_enabled ? BLI_time_now_seconds() : 0.0);
+  if (used_optix) {
+    /* Filter already ran above; fall through to the unpack. */
+  }
+  else if (use_gpu_oidn) {
     /* Hand the GPU to the CUDA filter alone. The filter's long non-preemptible kernels starve
      * concurrently executing Vulkan channels into NVRM Xid 109 CTX SWITCH TIMEOUT (NVIDIA
      * 595.71 / RTX 5090; June 11 isolation: async + GPU OIDN wedged within minutes while
@@ -4351,9 +4390,11 @@ bool raytrace_denoise_oidn(const GPUHardwareRaytraceOIDNDenoiseParams &params)
   if (perf_logging_enabled) {
     const double unpack_ms = (BLI_time_now_seconds() - unpack_start_time) * 1000.0;
     std::fprintf(stderr,
-                 "EEVEE HWRT perf oidn_backend gpu=%d shared_buffers=%d extent=%dx%d albedo=%d "
+                 "EEVEE HWRT perf oidn_backend denoiser=%s gpu=%d shared_buffers=%d "
+                 "extent=%dx%d albedo=%d "
                  "normal=%d pack_ms=%.2f (flush=%.2f publish=%.2f record=%.2f gpu_wait=%.2f) "
                  "filter_submit_ms=%.2f unpack_ms=%.2f unpacked=%d\n",
+                 used_optix ? "optix" : "oidn",
                  use_gpu_oidn ? 1 : 0,
                  cache.buffers_shared ? 1 : 0,
                  params.extent.x,
@@ -4386,6 +4427,11 @@ static void oidn_interop_cache_free()
     oidnReleaseFilter(cache.filter);
     cache.filter = nullptr;
   }
+#  ifdef WITH_NURU_OPTIX_DENOISER
+  /* Before the buffers: the OptiX path holds no per-call buffer references (imports are
+   * released after every denoise), but the denoiser/context must go before device teardown. */
+  nuru_optix::free_resources();
+#  endif
   free_oidn_buffers(cache);
   if (cache.device != nullptr) {
     oidnReleaseDevice(cache.device);

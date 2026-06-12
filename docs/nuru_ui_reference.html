@@ -80,6 +80,7 @@
   <h2>Denoise</h2>
   <table>
     <tr><th>Control</th><th>What it does</th></tr>
+    <tr><td><strong>Denoiser</strong></td><td>Chooses the denoise engine: <strong>OpenImageDenoise</strong> (default) or <strong>OptiX Denoiser</strong> (NVIDIA GPUs). Both run in the same pipeline; OptiX falls back to OpenImageDenoise when unavailable.</td></tr>
     <tr><td><strong>Passes</strong></td><td>Chooses which extra information the denoiser can use. More guidance can improve stability.</td></tr>
     <tr><td><strong>Prefilter</strong></td><td>Sets how the denoiser prepares its inputs before denoising.</td></tr>
     <tr><td><strong>Quality</strong></td><td>Balances denoising quality and performance.</td></tr>

@@ -2529,6 +2529,14 @@ enum RaytraceEEVEE_DenoiseFilter {
   RAYTRACE_EEVEE_DENOISE_FILTER_OIDN = 1,
 };
 
+/** Engine used for the final Hardware RT denoise filter. The pipeline (pack/unpack kernels,
+ * shared buffers, call sites) is identical for both; only the filter backend differs. OPTIX is
+ * NVIDIA/Vulkan only and falls back to OpenImageDenoise when unavailable. */
+enum RaytraceEEVEE_DenoiseBackend {
+  RAYTRACE_EEVEE_DENOISE_BACKEND_OIDN = 0,
+  RAYTRACE_EEVEE_DENOISE_BACKEND_OPTIX = 1,
+};
+
 enum RaytraceEEVEE_DenoiseInputPasses {
   RAYTRACE_EEVEE_DENOISE_INPUT_RGB = 1,
   RAYTRACE_EEVEE_DENOISE_INPUT_RGB_ALBEDO = 2,
@@ -2628,7 +2636,8 @@ struct RaytraceEEVEE {
   int denoise_sample_interval = RAYTRACE_EEVEE_DENOISE_SAMPLE_INTERVAL_1;
   /** HWRT diffuse GI rays per low-resolution gather point before OIDN reconstruction. */
   int gi_spatial_samples = RAYTRACE_EEVEE_GI_SPATIAL_16;
-  int _pad = 0;
+  /** #RaytraceEEVEE_DenoiseBackend. */
+  int denoise_backend = RAYTRACE_EEVEE_DENOISE_BACKEND_OIDN;
 };
 
 /** #SceneEEVEE::flag */

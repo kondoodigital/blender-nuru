@@ -137,6 +137,7 @@ Start with [`docs/README.html`](docs/README.html).
 - [`docs/nuru_ui_reference.html`](docs/nuru_ui_reference.html) documents the visible UI controls.
 - [`docs/nuru_shadows_and_lights.html`](docs/nuru_shadows_and_lights.html) explains RT shadows and transparent shadow controls.
 - [`docs/nuru_materials.html`](docs/nuru_materials.html) explains material expectations and current limits.
+- [`docs/nuru_dos_and_donts.html`](docs/nuru_dos_and_donts.html) is the practical dos-and-don'ts guide for materials and settings.
 - [`docs/nuru_windows.html`](docs/nuru_windows.html) covers Windows requirements, installation, and platform notes.
 
 ## Upstream Blender Links
