@@ -64,6 +64,12 @@ Guides, the UI reference, materials and Dos And Don'ts, and the platform pages f
 
 The same pages ship inside every download under `docs/`.
 
+## Upstream Blender Links
+
+- [Blender Website](https://www.blender.org)
+- [Blender Manual](https://docs.blender.org/manual/en/latest/index.html)
+- [Blender Developer Documentation](https://developer.blender.org/docs/)
+
 ## License
 
 Nuru documentation and Kondoo Digital additions are provided under Blender's GPL license. Blender as a whole is licensed under the GNU General Public License. See [blender.org/about/license](https://www.blender.org/about/license) for details.
