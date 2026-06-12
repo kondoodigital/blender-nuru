@@ -195,15 +195,15 @@
     <p class="meaning"><em>Nuru</em> means <strong>light</strong> in Swahili.</p>
     <p class="muted">A Blender branch by <strong>Kondoo Digital GmbH</strong>.</p>
     <p>
-      <a href="docs/README.html"><strong>Nuru Docs</strong></a> |
-      <a href="#downloads">Downloads</a> |
-      <a href="#what-nuru-is">What Nuru Is</a> |
-      <a href="#why-use-nuru">Why Use Nuru</a> |
-      <a href="#how-to-use-nuru">How To Use</a> |
-      <a href="#main-controls">Main Controls</a> |
-      <a href="#multi-os-branches">Multi-OS Branches</a> |
-      <a href="#current-limits">Current Limits</a> |
-      <a href="#documentation">Docs</a>
+      <a href="#downloads"><strong>Downloads</strong></a> |
+      <a href="docs/nuru_overview.html">Overview</a> |
+      <a href="docs/nuru_ui_reference.html">UI Reference</a> |
+      <a href="docs/nuru_shadows_and_lights.html">Shadows And Lights</a> |
+      <a href="docs/nuru_materials.html">Materials</a> |
+      <a href="docs/nuru_dos_and_donts.html">Dos And Don'ts</a> |
+      <a href="docs/nuru_windows.html">Windows</a> |
+      <a href="docs/nuru_macos.html">macOS</a> |
+      <a href="docs/nuru_linux.html">Linux</a>
     </p>
   </section>
 
@@ -223,30 +223,16 @@
     <article class="feature">
       <h3>Linux</h3>
       <p>NVIDIA RTX &middot; Vulkan</p>
-      <p><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-linux-5.1.1-0.9.8.deb"><strong>Deb Package 5.1.1-0.9.8</strong></a><br>
+      <p>      <a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-linux-5.1.1-0.9.8.deb"><strong>Deb Package 5.1.1-0.9.8</strong></a><br>
       <a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-linux-5.1.1-0.9.8.tar.gz">Portable Tar</a></p>
     </article>
   </div>
+  <p class="muted">The builds are unsigned. Requirements and first-start notes (SmartScreen, Gatekeeper, Linux install) are on the <a href="docs/nuru_windows.html">Windows</a>, <a href="docs/nuru_macos.html">macOS</a>, and <a href="docs/nuru_linux.html">Linux</a> pages.</p>
 
   <h2 id="what-nuru-is">What Nuru Is</h2>
   <p><strong>Nuru</strong> adds a <strong>Nuru Raytracing</strong> method to Blender Eevee. It lets artists choose which parts of the render use hardware ray tracing: global illumination, shadows, reflections, and refractions.</p>
   <p>Nuru is a hybrid real-time renderer. It is designed for interactive viewport feedback in Eevee, not as a replacement for Cycles.</p>
-
-  <table>
-    <tr><th>Area</th><th>Status</th></tr>
-    <tr><td>Packaged backends</td><td>Metal on macOS (<code>macos-metal</code>), Vulkan on Windows (<code>windows-vulkan</code>), and Vulkan on Linux (<code>linux-vulkan</code>)</td></tr>
-    <tr><td>Shared source branch</td><td><code>nuru-core</code></td></tr>
-    <tr><td>macOS implementation branch</td><td><code>macos-metal</code></td></tr>
-    <tr><td>Windows implementation branch</td><td><code>windows-vulkan</code></td></tr>
-    <tr><td>Linux implementation branch</td><td><code>linux-vulkan</code></td></tr>
-    <tr><td>Recommended macOS hardware</td><td>Apple M3 or newer</td></tr>
-    <tr><td>Recommended macOS version</td><td>macOS 14 or newer</td></tr>
-    <tr><td>Unsupported Apple GPUs</td><td>M1 and M2 do not provide the required hardware RT support</td></tr>
-    <tr><td>Recommended Windows hardware</td><td>NVIDIA GeForce RTX (RTX 20 series or newer) with a current driver</td></tr>
-    <tr><td>Recommended Windows version</td><td>Windows 10 or 11, 64-bit</td></tr>
-    <tr><td>Recommended Linux hardware</td><td>NVIDIA GeForce RTX (RTX 20 series or newer) with the 595-series or newer proprietary driver</td></tr>
-    <tr><td>Recommended Linux version</td><td>64-bit Linux; Ubuntu 22.04+ / Debian 12+ for the <code>.deb</code>, any current distribution for the portable archive</td></tr>
-  </table>
+  <p>The workflow, supported hardware, control summary, branch model, and current limits live on the <a href="docs/nuru_overview.html">Overview</a> page; every visible control is described in the <a href="docs/nuru_ui_reference.html">UI Reference</a>.</p>
 
   <h2 id="why-use-nuru">Why Use Nuru</h2>
   <p>Nuru is strongest when you need fast, stable images while working or rendering animation.</p>
@@ -276,72 +262,6 @@
       <p>The Rendered viewport and final render use the same Nuru lighting path, so lighting and material decisions carry over reliably.</p>
     </article>
   </div>
-
-  <h2 id="how-to-use-nuru">How To Use Nuru</h2>
-  <ol>
-    <li>Open <strong>Render Properties</strong>.</li>
-    <li>Set the render engine to <strong>Eevee</strong>.</li>
-    <li>Enable <strong>Raytracing</strong>.</li>
-    <li>Set <strong>Method</strong> to <strong>Nuru Raytracing</strong>.</li>
-    <li>Use <strong>Quick Settings</strong> to enable the RT features you need.</li>
-  </ol>
-  <p><strong>Material Preview</strong> uses Blender's standard preview path. Check Nuru in <strong>Rendered</strong> viewport or final render.</p>
-
-  <h2 id="main-controls">Main Controls</h2>
-  <table>
-    <tr><th>Control</th><th>What it does</th></tr>
-    <tr><td>Resolution</td><td>Sets trace resolution: 100%, 75%, 50%, or 25%. Applies to all traced effects, including reflections and refractions.</td></tr>
-    <tr><td>Global Illumination</td><td>Enables diffuse hardware-traced indirect light.</td></tr>
-    <tr><td>Raytrace Reflections</td><td>Enables Full RT reflections.</td></tr>
-    <tr><td>Raytrace Refractions</td><td>Enables Full RT refractions and transmission.</td></tr>
-    <tr><td>Raytrace Shadows</td><td>Uses hardware ray tracing for shadow visibility.</td></tr>
-    <tr><td>Transparent Shadows</td><td>Controls how much transparent material affects shadow strength.</td></tr>
-    <tr><td>Color Transmission</td><td>Controls how strongly transparent materials tint shadows.</td></tr>
-    <tr><td>Indirect Light and Indirect Clamp</td><td>Adjust indirect light strength and limit extreme highlights.</td></tr>
-    <tr><td>Denoise</td><td>Controls the denoising options shown in Quick Settings.</td></tr>
-  </table>
-
-  <h2 id="multi-os-branches">Multi-OS Branches</h2>
-  <p>Nuru now uses a shared-core plus thin platform-branch model.</p>
-  <table>
-    <tr><th>Branch</th><th>Purpose</th></tr>
-    <tr><td><code>nuru-core</code></td><td>Shared Nuru UI, RNA/DNA, material behavior, Eevee orchestration, docs, and backend-neutral hardware ray tracing API.</td></tr>
-    <tr><td><code>macos-metal</code></td><td>Apple Metal hardware ray tracing implementation, macOS app bundle, and macOS build/test helper changes.</td></tr>
-    <tr><td><code>windows-vulkan</code></td><td>Windows Vulkan implementation branch, based on <code>nuru-core</code>.</td></tr>
-    <tr><td><code>linux-vulkan</code></td><td>Linux Vulkan implementation branch, based on <code>nuru-core</code>.</td></tr>
-  </table>
-  <p>Packaged builds are available for macOS (Metal), Windows (Vulkan, NVIDIA RTX), and Linux (Vulkan, NVIDIA RTX).</p>
-
-  <h2 id="current-limits">Current Limits</h2>
-  <ul>
-    <li>Nuru is not active in Material Preview.</li>
-    <li>Some complex material graphs may need adjustment for stable RT results.</li>
-    <li>Rough reflections soften texture detail by design; keep the trace Resolution at 100% for the sharpest mirrors or lower it for speed.</li>
-    <li>Nuru is not a path tracer and is not intended to match Cycles feature-for-feature.</li>
-  </ul>
-
-  <h2 id="macos-download-note">macOS Download Note</h2>
-  <p>If your macOS build is unsigned and not notarized, Gatekeeper may report that <code>Blender-Nuru.app</code> is damaged.</p>
-  <pre><code>xattr -dr com.apple.quarantine /path/to/Blender-Nuru.app</code></pre>
-
-  <h2 id="windows-download-note">Windows Download Note</h2>
-  <p>The Windows build is unsigned, so the first start may show <strong>"Windows protected your PC"</strong> (SmartScreen). Click <strong>More info</strong>, then <strong>Run anyway</strong>. Unzip the package anywhere and start <code>Blender-Nuru.exe</code>; see <a href="docs/nuru_windows.html">Nuru On Windows</a> for requirements and details.</p>
-
-  <h2 id="linux-download-note">Linux Download Note</h2>
-  <p>Install the <code>.deb</code> with <code>sudo apt install ./Blender-Nuru-linux-&lt;version&gt;.deb</code> (Ubuntu 22.04+ / Debian 12+), or unpack the portable <code>.tar.gz</code> anywhere and start <code>./blender-nuru</code>. Nuru hardware ray tracing needs the NVIDIA proprietary driver, 595 series or newer; see <a href="docs/nuru_linux.html">Nuru On Linux</a> for requirements and details.</p>
-
-  <h2 id="documentation">Documentation</h2>
-  <p>Start at <a href="docs/README.html">docs/README.html</a>.</p>
-  <ul>
-    <li><a href="docs/nuru_overview.html">Nuru Overview</a></li>
-    <li><a href="docs/nuru_ui_reference.html">UI Reference</a></li>
-    <li><a href="docs/nuru_shadows_and_lights.html">Shadows And Lights</a></li>
-    <li><a href="docs/nuru_materials.html">Materials</a></li>
-    <li><a href="docs/nuru_dos_and_donts.html">Dos And Don'ts</a></li>
-    <li><a href="docs/nuru_macos.html">Nuru On macOS</a></li>
-    <li><a href="docs/nuru_windows.html">Nuru On Windows</a></li>
-    <li><a href="docs/nuru_linux.html">Nuru On Linux</a></li>
-  </ul>
 
   <h2>Upstream Blender Links</h2>
   <ul>
