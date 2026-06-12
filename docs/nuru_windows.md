@@ -14,8 +14,16 @@ Blender-Nuru for Windows runs Eevee on the Vulkan graphics backend with Nuru har
 
 ## Install
 
+### Installer (recommended)
+
+1. Download the Windows installer (`Blender-Nuru-windows-<version>.exe`) from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases).
+2. Run it. The wizard shows the GPL license, lets you pick the install folder, and creates Start Menu and Desktop shortcuts.
+3. Start **Blender-Nuru** from the Start Menu or the Desktop shortcut. Uninstall any time from **Settings > Apps** (the uninstaller leaves your own files in the install folder untouched).
+
+### Portable zip
+
 1. Download the Windows zip from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases).
-2. Unzip it anywhere you like, for example `C:\Programs\Blender-Nuru`. No installer is needed.
+2. Unzip it anywhere you like, for example `C:\Programs\Blender-Nuru`.
 3. Start **`Blender-Nuru.exe`**. A console window opens alongside the app and shows log output. To start without the console window, use `Blender-Nuru-launcher.exe` instead.
 
 ### Windows SmartScreen

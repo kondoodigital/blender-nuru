@@ -29,7 +29,7 @@
       <td align="center">Vulkan</td>
     </tr>
     <tr>
-      <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-windows-5.1.1-0.9.8.zip"><strong>Download 5.1.1-0.9.8</strong></a></td>
+      <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-windows-5.1.1-0.9.8.exe"><strong>Installer 5.1.1-0.9.8</strong></a><br/><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-windows-5.1.1-0.9.8.zip">Portable Zip</a></td>
       <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-macos-5.1.1-0.9.8.zip"><strong>Download 5.1.1-0.9.8</strong></a></td>
       <td align="center"><em>Coming soon</em></td>
     </tr>
@@ -60,7 +60,7 @@ Nuru is a hybrid real-time renderer. It is designed for interactive viewport fee
 Nuru is strongest when you need fast, stable images while working or rendering animation.
 
 - **High-resolution output:** At 4K and above, Nuru can keep expensive RT work at a lower internal **Resolution** while still producing a high-resolution final image. The Resolution setting applies to every traced effect, including reflections and refractions.
-- **True materials in reflections:** Mirrors and refractive surfaces show the real material of what they reflect ΓÇö image textures, UV maps, and mixed shader setups stay intact in the reflection.
+- **True materials in reflections:** Mirrors and refractive surfaces show the real material of what they reflect — image textures, UV maps, and mixed shader setups stay intact in the reflection.
 - **Volumetrics:** Object and world volumes render in viewport and final frames, including lit fog and sun shafts through windows.
 - **Animation stability:** Integrated denoising and temporal accumulation help reduce frame-to-frame noise shimmer that can appear in low-sample path-traced animation.
 - **Fast repeated frames:** After the first warm-up, animation frames can progress quickly because Nuru traces selected effects instead of path tracing every light path from scratch.
