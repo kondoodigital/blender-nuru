@@ -242,6 +242,12 @@ class RayTraceModule {
   int hardware_direct_light_tile_capacity_ = 1;
   draw::StorageArrayBuffer<GPUHardwareRaytraceFastGILightRecord, 256> hardware_fast_gi_light_buf_ = {
       "hardware_fast_gi_light_buf_"};
+  /** Light record + tree buffer cache: lights only change with a depsgraph update, so the CPU
+   * tree build + GPU upload run once per update instead of once per trace call. */
+  uint64_t hardware_light_records_update_count_ = 0;
+  bool hardware_light_records_update_count_valid_ = false;
+  int hardware_light_records_light_count_ = 0;
+  int hardware_light_records_local_light_count_ = 0;
   /** Nuru NIS: learned per-cluster sampling multipliers (ones until the network trains). */
   draw::StorageArrayBuffer<float, 32> hardware_light_cluster_weight_buf_ = {
       "hardware_light_cluster_weight_buf_"};
@@ -336,6 +342,11 @@ class RayTraceModule {
   draw::StorageArrayBuffer<uint, 64, true> hit_eval_offset_buf_ = {"hit_eval_offset_buf_"};
   draw::StorageArrayBuffer<uint, 64, true> hit_eval_cursor_buf_ = {"hit_eval_cursor_buf_"};
   draw::StorageArrayBuffer<uint, 64> hit_eval_resource_id_buf_ = {"hit_eval_resource_id_buf_"};
+  /** Cache key for `hit_eval_resource_id_buf_`: the table only changes with the sorted scene
+   * entries, not per closure/phase call. */
+  uint64_t hit_eval_resource_ids_update_count_ = 0;
+  bool hit_eval_resource_ids_update_count_valid_ = false;
+  int hit_eval_resource_ids_entry_count_ = 0;
   draw::StorageArrayBuffer<DrawCommand, 16, true> hit_eval_indirect_buf_ = {
       "hit_eval_indirect_buf_"};
   draw::StorageArrayBuffer<HardwareHitEvalRecord, 1024, true> hit_eval_records_buf_ = {

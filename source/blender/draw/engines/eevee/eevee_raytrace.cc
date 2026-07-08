@@ -1770,7 +1770,9 @@ void RayTraceModule::render_directional_shadow_visibility(View &render_view,
   hardware_direct_light_denoised_tx_.clear(float4(0.0f));
   hardware_direct_light_depth_tx_.clear(float4(0.0f));
   hardware_direct_light_tilemask_tx_.clear(uint4(0u));
-  GPU_flush();
+  /* No flush needed: the Vulkan backend flushes the render graph and waits for queue
+   * submission before every kernel dispatch, and Metal commits in CPU order. The extra
+   * flush only split the frame into more queue submissions. */
 
   Vector<LightData> local_lights;
   Vector<LightData> sun_lights;
@@ -1985,7 +1987,9 @@ void RayTraceModule::render_environment_visibility(View &render_view,
   hardware_environment_visibility_tx_.ensure_2d(
       gpu::TextureFormat::SFLOAT_16_16_16_16, extent, usage_rw);
   hardware_environment_visibility_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
-  GPU_flush();
+  /* No flush needed: the Vulkan backend flushes the render graph and waits for queue
+   * submission before every kernel dispatch, and Metal commits in CPU order. The extra
+   * flush only split the frame into more queue submissions. */
 
   const double scene_acquire_start = perf_logging_enabled ? BLI_time_now_seconds() : 0.0;
   GPUHardwareRaytraceSceneStats rt_scene_stats;
@@ -2047,7 +2051,8 @@ void RayTraceModule::render_secondary_environment_visibility(GPUHardwareRaytrace
   hardware_secondary_environment_visibility_tx_.ensure_2d(
       gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_extent, usage_rw);
   hardware_secondary_environment_visibility_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
-  GPU_flush();
+  /* No flush: the clear and the visibility kernel execute in queue order on the same GPU queue;
+   * the submission break only added CPU cost per closure call. */
 
   GPUHardwareRaytraceHitEnvironmentVisibilityParams env_params;
   env_params.hit_normal_tx = hit_normal_tx_;
@@ -2102,7 +2107,9 @@ void RayTraceModule::render_hit_shadow_visibility(GPUHardwareRaytraceScene *rt_s
   shadow_visibility_tx.ensure_2d_array(
       gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_extent, total_light_count, usage_rw);
   shadow_visibility_tx.clear(float4(1.0f));
-  GPU_flush();
+  /* No flush needed: the Vulkan backend flushes the render graph and waits for queue
+   * submission before every kernel dispatch, and Metal commits in CPU order. The extra
+   * flush only split the frame into more queue submissions. */
 
   Vector<LightData> local_lights;
   Vector<LightData> sun_lights;
@@ -2289,6 +2296,7 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
   hardware_trace_dispatch_buf_.clear_to_zero();
   inst_.manager->submit(hardware_trace_tile_compact_ps_);
 
+  const double clears_start = perf_logging_enabled ? BLI_time_now_seconds() : 0.0;
   hit_albedo_tx_.clear(float4(0.0f));
   reflected_receiver_gi_tx_.clear(float4(0.0f));
   hardware_nis_feedback_buf_.clear_to_zero();
@@ -2321,7 +2329,12 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
   transmission_receiver_world_position_tx_.clear(float4(0.0f));
   transmission_receiver_identity_tx_.clear(uint4(0u));
   transmission_receiver_barycentric_tx_.clear(float4(0.0f));
-  GPU_flush();
+  /* No flush needed: the Vulkan backend flushes the render graph and waits for queue
+   * submission before every kernel dispatch, and Metal commits in CPU order. The extra
+   * flush only split the frame into more queue submissions. */
+  const double clears_ms = perf_logging_enabled ?
+                               (BLI_time_now_seconds() - clears_start) * 1000.0 :
+                               0.0;
 
   const double scene_acquire_start = perf_logging_enabled ? BLI_time_now_seconds() : 0.0;
   GPUHardwareRaytraceSceneStats rt_scene_stats;
@@ -2398,32 +2411,49 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
     trace_params.refraction_bounces = data_.hardware_refraction_bounces;
     trace_params.resolution_bias = data_.resolution_bias;
     trace_params.clamp_indirect = 1.0e10f;
-    Vector<LightData> local_lights;
-    Vector<LightData> sun_lights;
-    Vector<int> sun_light_world_slots;
-    inst_.lights.append_sync_local_lights(local_lights);
-    inst_.lights.append_sync_sun_lights(sun_lights, &sun_light_world_slots);
-    const int trace_local_light_count = min_ii(256, int(local_lights.size()));
-    const int trace_light_count = min_ii(256, int(local_lights.size() + sun_lights.size()));
-    for (int light_index = 0; light_index < trace_light_count; light_index++) {
-      const LightData &light = (light_index < local_lights.size()) ?
-                                   local_lights[light_index] :
-                                   sun_lights[light_index - local_lights.size()];
-      hardware_fast_gi_light_buf_.get_or_resize(light_index) =
-          hardware_fast_gi_light_record_from_light(light);
+    /* Nuru light tree (Stage A many-light sampling / NIS): the CPU tree build and the light
+     * record upload only depend on the synced lights. Rebuild once per depsgraph update instead
+     * of once per closure/phase trace call; light edits invalidate the depsgraph, so
+     * interactivity is unaffected. */
+    const uint64_t light_records_update_count = (inst_.depsgraph != nullptr) ?
+                                                    DEG_get_update_count(inst_.depsgraph) :
+                                                    0;
+    if (!hardware_light_records_update_count_valid_ ||
+        hardware_light_records_update_count_ != light_records_update_count)
+    {
+      Vector<LightData> local_lights;
+      Vector<LightData> sun_lights;
+      Vector<int> sun_light_world_slots;
+      inst_.lights.append_sync_local_lights(local_lights);
+      inst_.lights.append_sync_sun_lights(sun_lights, &sun_light_world_slots);
+      const int local_light_count = min_ii(256, int(local_lights.size()));
+      const int light_count = min_ii(256, int(local_lights.size() + sun_lights.size()));
+      for (int light_index = 0; light_index < light_count; light_index++) {
+        const LightData &light = (light_index < local_lights.size()) ?
+                                     local_lights[light_index] :
+                                     sun_lights[light_index - local_lights.size()];
+        hardware_fast_gi_light_buf_.get_or_resize(light_index) =
+            hardware_fast_gi_light_record_from_light(light);
+      }
+      /* Encoded tree nodes ride in the same buffer after the light records, so every existing
+       * binding carries the tree. */
+      const Vector<GPUHardwareRaytraceFastGILightRecord> tree_nodes = hardware_light_tree_build(
+          Span<LightData>(local_lights).take_front(local_light_count), 0);
+      for (const int node_index : tree_nodes.index_range()) {
+        hardware_fast_gi_light_buf_.get_or_resize(light_count + node_index) =
+            tree_nodes[node_index];
+      }
+      if (light_count > 0) {
+        hardware_fast_gi_light_buf_.resize(light_count + int(tree_nodes.size()));
+        hardware_fast_gi_light_buf_.push_update();
+      }
+      hardware_light_records_light_count_ = light_count;
+      hardware_light_records_local_light_count_ = local_light_count;
+      hardware_light_records_update_count_ = light_records_update_count;
+      hardware_light_records_update_count_valid_ = true;
     }
-    /* Nuru light tree (Stage A many-light sampling): encoded nodes ride in the same buffer
-     * after the light records, so every existing binding carries the tree. */
-    const Vector<GPUHardwareRaytraceFastGILightRecord> tree_nodes = hardware_light_tree_build(
-        Span<LightData>(local_lights).take_front(trace_local_light_count), 0);
-    for (const int node_index : tree_nodes.index_range()) {
-      hardware_fast_gi_light_buf_.get_or_resize(trace_light_count + node_index) =
-          tree_nodes[node_index];
-    }
-    if (trace_light_count > 0) {
-      hardware_fast_gi_light_buf_.resize(trace_light_count + int(tree_nodes.size()));
-      hardware_fast_gi_light_buf_.push_update();
-    }
+    const int trace_local_light_count = hardware_light_records_local_light_count_;
+    const int trace_light_count = hardware_light_records_light_count_;
     trace_params.light_buf = (trace_light_count > 0) ?
                                  static_cast<gpu::StorageBuf *>(hardware_fast_gi_light_buf_) :
                                  nullptr;
@@ -2467,7 +2497,11 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
                                        (BLI_time_now_seconds() - trace_submit_start) * 1000.0 :
                                        0.0;
     inst_.manager->submit(hardware_tile_compact_ps_);
+    const double hit_eval_start = perf_logging_enabled ? BLI_time_now_seconds() : 0.0;
     submit_hardware_hit_evaluation_backend(render_view);
+    const double hit_eval_ms = perf_logging_enabled ?
+                                   (BLI_time_now_seconds() - hit_eval_start) * 1000.0 :
+                                   0.0;
     const double secondary_environment_start = perf_logging_enabled ? BLI_time_now_seconds() : 0.0;
     render_secondary_environment_visibility(rt_scene, tracing_res);
     const double secondary_environment_ms =
@@ -2491,17 +2525,22 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
     const double secondary_shadow_ms = perf_logging_enabled ?
                                            (BLI_time_now_seconds() - secondary_shadow_start) * 1000.0 :
                                            0.0;
+    const double lighting_start = perf_logging_enabled ? BLI_time_now_seconds() : 0.0;
     inst_.manager->submit(trace_hardware_lighting_ps_, render_view);
     if (perf_logging_enabled) {
+      const double lighting_ms = (BLI_time_now_seconds() - lighting_start) * 1000.0;
       const double elapsed_ms = (BLI_time_now_seconds() - perf_start_time) * 1000.0;
       std::fprintf(stderr,
-                   "EEVEE HWRT perf trace closure=%d features=0x%x scene_acquire_ms=%.2f trace_submit_ms=%.2f secondary_env_ms=%.2f secondary_shadow_ms=%.2f elapsed_ms=%.2f\n",
+                   "EEVEE HWRT perf trace closure=%d features=0x%x clears_ms=%.2f scene_acquire_ms=%.2f trace_submit_ms=%.2f hit_eval_ms=%.2f secondary_env_ms=%.2f secondary_shadow_ms=%.2f lighting_ms=%.2f elapsed_ms=%.2f\n",
                    data_.closure_index,
                    unsigned(current_hardware_feature_mask_),
+                   clears_ms,
                    scene_acquire_ms,
                    trace_submit_ms,
+                   hit_eval_ms,
                    secondary_environment_ms,
                    secondary_shadow_ms,
+                   lighting_ms,
                    elapsed_ms);
     }
     GPU_debug_group_end();
@@ -2720,12 +2759,22 @@ bool RayTraceModule::submit_hardware_hit_evaluation_backend(View &render_view)
    * between the GI scale and the full-resolution scene-final specular phase within one frame. */
   hit_eval_records_buf_.resize(max_ii(int(hit_eval_records_buf_.size()), max_hit_records));
 
-  for (const int entry_index : all_entries.index_range()) {
-    const HardwareRaytraceSceneEntry &entry = all_entries[entry_index];
-    const ResourceIndexRange resource_range = entry.resource_handle;
-    hit_eval_resource_id_buf_.get_or_resize(entry_index) = uint(resource_range.first.raw);
+  /* The resource-id table only depends on the sorted scene entries; skip the rebuild + GPU
+   * upload for the repeated per-closure/per-phase calls within one synced frame. */
+  if (!hit_eval_resource_ids_update_count_valid_ ||
+      hit_eval_resource_ids_update_count_ != hardware_sorted_scene_entries_update_count_ ||
+      hit_eval_resource_ids_entry_count_ != entry_count)
+  {
+    for (const int entry_index : all_entries.index_range()) {
+      const HardwareRaytraceSceneEntry &entry = all_entries[entry_index];
+      const ResourceIndexRange resource_range = entry.resource_handle;
+      hit_eval_resource_id_buf_.get_or_resize(entry_index) = uint(resource_range.first.raw);
+    }
+    hit_eval_resource_id_buf_.push_update();
+    hit_eval_resource_ids_update_count_ = hardware_sorted_scene_entries_update_count_;
+    hit_eval_resource_ids_entry_count_ = entry_count;
+    hit_eval_resource_ids_update_count_valid_ = true;
   }
-  hit_eval_resource_id_buf_.push_update();
   const bool submitted_primary = submit_payload_hit_eval({ray_time_tx_,
                                                           ray_radiance_tx_,
                                                           hit_albedo_tx_,
@@ -2736,7 +2785,14 @@ bool RayTraceModule::submit_hardware_hit_evaluation_backend(View &render_view)
                                                           hit_world_position_tx_,
                                                           hit_identity_tx_,
                                                           hit_barycentric_tx_});
-  const bool submitted_receiver = submit_payload_hit_eval({layered_receiver_ray_time_tx_,
+  /* The layered/transmission receiver payloads are only produced by the scene-final specular
+   * preservation paths in the trace kernels; during the GI phase they are cleared textures.
+   * Recording ~entry_count replay draws for three payload sets per call was the dominant CPU
+   * cost of this function, so skip the receiver payload passes outside the scene-final phase. */
+  const bool scene_final_specular_phase = (data_.hardware_trace_phase ==
+                                           int(HWRT_TRACE_PHASE_SCENE_FINAL_SPECULAR));
+  const bool submitted_receiver = scene_final_specular_phase &&
+                                  submit_payload_hit_eval({layered_receiver_ray_time_tx_,
                                                            layered_receiver_ray_radiance_tx_,
                                                            layered_receiver_albedo_tx_,
                                                            layered_receiver_throughput_tx_,
@@ -2746,17 +2802,18 @@ bool RayTraceModule::submit_hardware_hit_evaluation_backend(View &render_view)
                                                            layered_receiver_world_position_tx_,
                                                            layered_receiver_identity_tx_,
                                                            layered_receiver_barycentric_tx_});
-  const bool submitted_transmission_receiver = submit_payload_hit_eval(
-      {transmission_receiver_ray_time_tx_,
-       transmission_receiver_ray_radiance_tx_,
-       transmission_receiver_albedo_tx_,
-       transmission_receiver_throughput_tx_,
-       transmission_receiver_material_tx_,
-       transmission_receiver_normal_tx_,
-       transmission_receiver_position_tx_,
-       transmission_receiver_world_position_tx_,
-       transmission_receiver_identity_tx_,
-       transmission_receiver_barycentric_tx_});
+  const bool submitted_transmission_receiver =
+      scene_final_specular_phase &&
+      submit_payload_hit_eval({transmission_receiver_ray_time_tx_,
+                               transmission_receiver_ray_radiance_tx_,
+                               transmission_receiver_albedo_tx_,
+                               transmission_receiver_throughput_tx_,
+                               transmission_receiver_material_tx_,
+                               transmission_receiver_normal_tx_,
+                               transmission_receiver_position_tx_,
+                               transmission_receiver_world_position_tx_,
+                               transmission_receiver_identity_tx_,
+                               transmission_receiver_barycentric_tx_});
   GPU_debug_group_end();
   return submitted_primary || submitted_receiver || submitted_transmission_receiver;
 }
@@ -3878,6 +3935,8 @@ void RayTraceModule::render_scene_final_specular(RayTraceBuffer &rt_buffer,
    * `warm_hardware_tracing_backend()` long after this frame returned. */
   scene_final_specular_resolve_ps_.specialize_constant(
       sh, "use_shared_indirect", result.use_shared_indirect);
+  scene_final_specular_resolve_ps_.specialize_constant(
+      sh, "scene_final_feature_mask", int(feature_mask));
   scene_final_specular_resolve_ps_.shader_set(sh);
   scene_final_specular_resolve_ps_.bind_texture("indirect_radiance_1_tx", &result.closures[0]);
   scene_final_specular_resolve_ps_.bind_texture("indirect_radiance_2_tx", &result.closures[1]);

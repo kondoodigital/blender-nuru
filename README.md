@@ -32,7 +32,7 @@
     <tr>
       <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-windows-5.1.1-0.9.8.exe"><strong>Installer 5.1.1-0.9.8</strong></a><br/><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-windows-5.1.1-0.9.8.zip">Portable Zip</a></td>
       <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-macos-5.1.1-0.9.8.zip"><strong>Download 5.1.1-0.9.8</strong></a></td>
-      <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-linux-5.1.1-0.9.8.deb"><strong>Deb Package 5.1.1-0.9.8</strong></a><br/><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-linux-5.1.1-0.9.8.tar.gz">Portable Tar</a></td>
+      <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-1.0/Blender-Nuru-linux-5.1.1-1.0.deb"><strong>Deb Package 5.1.1-1.0</strong></a><br/><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-1.0/Blender-Nuru-linux-5.1.1-1.0.tar.gz">Portable Tar</a></td>
     </tr>
   </table>
 

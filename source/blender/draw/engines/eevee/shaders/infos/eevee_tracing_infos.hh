@@ -448,6 +448,11 @@ SAMPLER(2, sampler2D, indirect_radiance_3_tx)
 SAMPLER(5, sampler2D, shared_indirect_tx)
 IMAGE(3, SFLOAT_16_16_16_16, read_write, image2D, combined_img)
 IMAGE(4, SFLOAT_16_16_16_16, read_write, image2DArray, rp_color_img)
+/* Scene-final HWRT specular feature bits (RAYTRACE_EEVEE_HARDWARE_REFLECTIONS = 1 << 2,
+ * RAYTRACE_EEVEE_HARDWARE_REFRACTIONS = 1 << 3). Baked per pass because this pass is replayed
+ * by the interactive warm path long after the frame's uniform buffer moved on; reading the
+ * live uniform mask there composites with another phase's mask. */
+SPECIALIZATION_CONSTANT(int, scene_final_feature_mask, 12)
 SPECIALIZATION_CONSTANT(bool, use_shared_indirect, false)
 COMPUTE_SOURCE("eevee_ray_generate_comp.glsl")
 GPU_SHADER_CREATE_END()

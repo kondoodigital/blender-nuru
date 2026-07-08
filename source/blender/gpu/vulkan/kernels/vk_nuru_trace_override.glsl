@@ -624,19 +624,75 @@ vec3 sample_trace_direct_light(uvec2 tid,
                                uint source_user_id,
                                uint source_primitive_id,
                                bool trace_visibility,
+                               bool include_locals,
                                accelerationStructureEXT scene)
 {
-  /* Nuru: analytic-light NEE at gather hit points is disabled on Vulkan for ALL light types.
-   * Local lights always returned 0 here (the center-ray NEE estimate injects bounced energy
-   * through sealed walls). June 11 A/B against the Metal reference extended that to suns: on
-   * NVIDIA RT cores the sun occlusion ray repeatedly escaped near wall/floor seams in every
-   * variant tested (negated and unnegated direction, with and without the self-hit retry),
-   * painting a bright leak band along interior wall bases that the Metal build does not show.
-   * Removing the term reproduced Metal's clean GI on the same open-box scene. GI direct
-   * lighting at hit points is owned by the hit-lighting kernel
-   * (`eevee_nuru_ray_trace_hardware_lighting_comp.glsl`), which consumes properly traced
-   * per-light hit-shadow visibility. Emissive transport is unaffected (separate path). */
-  return vec3(0.0);
+  /* Nuru: direct translation of the Metal `sample_trace_direct_light` (the June 11 all-zero
+   * Vulkan stub is retired for kernel parity with the Metal reference: mirror/GI-visible
+   * diffuse surfaces were missing the in-kernel sun NEE that the Metal build applies at every
+   * diffuse-gather hit). The transport contract is unchanged and calibrated on Metal:
+   * - the primary gather is a DISJOINT split: hit lighting evaluates LOCAL lights analytically
+   *   at recorded GI hits; this in-kernel NEE owns SUNS for the dome rays (adding locals here
+   *   double-counts their bounce),
+   * - `include_locals` (light-tree descent) exists only for the receiver-GI kernels, which are
+   *   not ported to Vulkan yet; no Vulkan call site passes true. */
+  const int light_count = max(uniforms.light_count_pad.x, 0);
+  const int light_sample_count = min(max(uniforms.light_count_pad.y, 0), sample_count);
+  if (light_count <= 0 || light_sample_count <= 0 || sample_index >= light_sample_count) {
+    return vec3(0.0);
+  }
+  if (include_locals) {
+    /* Receiver-GI light-tree descent: kernels not ported on Vulkan; unreachable today. */
+    return vec3(0.0);
+  }
+  const int light_index = min(int(rand2_trace(tid,
+                                              sample_index,
+                                              211 + sample_index * 19).x * float(light_count)),
+                              light_count - 1);
+  const float select_weight = float(light_count);
+  if (light_index < 0) {
+    return vec3(0.0);
+  }
+  const FastGILightRecord light = trace_lights[light_index];
+  const uint type = uint(light.direction_type.w + 0.5);
+  if (!fast_gi_is_sun(type)) {
+    /* Disjoint-split contract (see above): suns only on this path. */
+    return vec3(0.0);
+  }
+  vec3 L = vec3(0.0, 0.0, 1.0);
+  float light_distance = 100000.0;
+  L = normalize(-light.direction_type.xyz);
+  const float attenuation = fast_gi_light_surface_attenuation(light, type, L, light_distance);
+  const float facing = clamp(dot(N, L), 0.0, 1.0);
+  if (!(attenuation > 1.0e-6) || !(facing > 1.0e-4)) {
+    return vec3(0.0);
+  }
+  if (trace_visibility) {
+    const float visibility_origin_epsilon = hwrt_gi_ray_epsilon(light_distance);
+    const float visibility_ray_tmin = visibility_origin_epsilon;
+    const float visibility_self_hit_tmax = hwrt_gi_self_hit_distance(visibility_origin_epsilon);
+    const vec3 origin = P + N * visibility_origin_epsilon;
+    const float ray_tmax = 100000.0;
+    HitResult occlusion = trace_scene_closest(scene, origin, L, visibility_ray_tmin, ray_tmax);
+    if (occlusion.hit && occlusion.dist <= visibility_self_hit_tmax &&
+        occlusion.user_instance_id == source_user_id &&
+        occlusion.primitive_id == source_primitive_id)
+    {
+      /* Nuru: visibility to lights must be as tight as the diffuse gather itself. Ignore only
+       * the exact source-triangle self hit; do not use a distance-scaled bias that can skip
+       * sealed wall blockers. */
+      const vec3 retry_origin = origin + L * (occlusion.dist + visibility_ray_tmin);
+      occlusion = trace_scene_closest(scene, retry_origin, L, visibility_ray_tmin, ray_tmax);
+    }
+    if (occlusion.hit) {
+      return vec3(0.0);
+    }
+  }
+  const float direct_scale = float(sample_count) / float(light_sample_count);
+  const float power = light.color_diffuse_power.w *
+                      fast_gi_light_point_power(light, type, light_distance, L) * attenuation *
+                      facing * select_weight * direct_scale;
+  return light.color_diffuse_power.xyz * power;
 }
 void main()
 {
@@ -1305,11 +1361,11 @@ void main()
                                   10000.0);
           if (!transmission_intersection.hit) {
             if (transmission_receiver_valid) {
-              transmission_receiver_continued_radiance += transmission_throughput *
-                  min(sample_trace_world_radiance(world_probe_tx,
-                                                 transmission_ray_direction,
-                                                 uniforms.use_environment_pad.x != 0),
-                      vec3(uniforms.clamp_indirect));
+              /* Dome-occlusion contract: the kernel has no access to the traced environment
+               * visibility buffer, so it must never inject unmasked world radiance. An
+               * unattenuated env add here floods sealed interiors with sky through every
+               * refractive surface. World lighting for transmission receivers is owned by the
+               * lighting pass, which attenuates by the cross-filtered dome visibility. */
               break;
             }
             transmission_receiver_valid = true;
@@ -1643,6 +1699,7 @@ void main()
                                               diffuse_user_id,
                                               diffuse_intersection.primitive_id,
                                               true,
+                                              false,
                                               scene) * diffuse_weight;
       }
       else if (!use_emissive_guiding) {

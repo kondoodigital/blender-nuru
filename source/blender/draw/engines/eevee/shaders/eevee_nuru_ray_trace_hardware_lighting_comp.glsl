@@ -233,12 +233,21 @@ bool hardware_scene_final_suppress_direct_hit_light(bool primary_is_diffuse_gi,
 
 float hardware_hit_principled_metallic_coverage(int2 texel)
 {
-  return saturate(texelFetch(hit_barycentric_tx, texel, 0).w);
+  /* Metal-reference contract: the macOS lighting pass never binds `hit_barycentric_tx`, so the
+   * coverage sample reads zero there and layered Principled mirror receivers keep their diffuse
+   * base + analytic direct light (textured floors/walls in metal mirrors). Binding the real
+   * coverage on Vulkan (the EMERALD 3 missing-bind fix) flipped these receivers into the
+   * full-metal handling (base visibility 0, direct light suppressed): flat/black mirror
+   * interiors. Keep the bind for Vulkan's binding validation but replicate the validated Metal
+   * runtime value until the mirror-metal matrix is re-validated with real coverage on ALL
+   * backends. */
+  return 0.0f;
 }
 
 float hardware_layered_receiver_principled_metallic_coverage(int2 texel)
 {
-  return saturate(texelFetch(layered_receiver_barycentric_tx, texel, 0).w);
+  /* See `hardware_hit_principled_metallic_coverage`: Metal-reference zero coverage. */
+  return 0.0f;
 }
 
 float hardware_principled_reflection_layer_visibility(bool principled_layered_scene_final,
@@ -1671,10 +1680,12 @@ void hardware_hit_closure_light_terms(int2 texel_fullres,
            hardware_hit_closure_is_specular_family(cl.type) && probe_uses_world)
   {
     /* Hit-eval replay owns the material. Sample the world along the reflected specular direction
-     * without RT environment visibility, matching direct-view mirror BRDF sampling. */
+     * (matching direct-view mirror BRDF sampling), but still attenuate by the traced dome
+     * visibility: an unmasked world sample floods sealed interiors with sky light. */
     LightProbeRay probe_ray = bxdf_lightprobe_ray(cl, P_hit, V, cl_thickness);
     probe_light = lightprobe_eval_with_direction(
         samp, cl, P_hit, V, cl_thickness, probe_ray.dominant_direction);
+    probe_light *= hardware_environment_visibility_load_filtered(texel_fullres, N).visibility;
   }
   else if (suppress_scene_final_direct_hit_light &&
            hardware_hit_closure_is_specular_family(cl.type) && probe_uses_world)
@@ -1682,6 +1693,8 @@ void hardware_hit_closure_light_terms(int2 texel_fullres,
     LightProbeRay probe_ray = bxdf_lightprobe_ray(cl, P_hit, V, cl_thickness);
     probe_light = lightprobe_eval_with_direction(
         samp, cl, P_hit, V, cl_thickness, probe_ray.dominant_direction);
+    /* Dome-occlusion contract: see the replayed-receiver branch above. */
+    probe_light *= hardware_environment_visibility_load_filtered(texel_fullres, N).visibility;
   }
   else if (hardware_hit_closure_uses_environment_visibility(cl, primary_is_diffuse_gi) &&
            probe_uses_world)
@@ -1856,9 +1869,10 @@ void layered_receiver_hit_closure_light_terms(int2 texel_fullres,
   }
   else if (scene_final_textured_continuation_unshadowed && probe_uses_world)
   {
-    /* Continuation is folded onto a replayed mirror proxy at the parent texel. Never multiply by
-     * the parent pixel's RT environment-visibility mask: it is constant across the reflected surface
-     * and recreates the horizontal terminator on textured spheres. */
+    /* Continuation is folded onto a replayed mirror proxy at the parent texel. The parent-texel
+     * dome mask is constant across the reflected surface (it can print a horizontal terminator
+     * on textured spheres), but leaving the world sample unmasked floods sealed interiors with
+     * sky light through every mirror. Occlusion correctness owns this trade: attenuate. */
     if (hardware_hit_closure_is_specular_family(cl.type)) {
       LightProbeRay probe_ray = bxdf_lightprobe_ray(cl, P_hit, V, cl_thickness);
       probe_light = lightprobe_eval_with_direction(
@@ -1867,17 +1881,20 @@ void layered_receiver_hit_closure_light_terms(int2 texel_fullres,
     else {
       probe_light = lightprobe_eval(samp, cl, P_hit, V, cl_thickness);
     }
+    probe_light *= hardware_environment_visibility_load_filtered(texel_fullres, N).visibility;
   }
   else if (hardware_hit_closure_uses_environment_visibility(cl, primary_is_diffuse_gi) &&
            probe_uses_world)
   {
     /* Receiver shading does not have its own environment-visibility buffer yet, but transmission
      * receivers still need the traced transmitted/world direction rather than the front mirror texel
-     * fallback or they lose the HDRI/world contribution entirely on miss. */
+     * fallback or they lose the HDRI/world contribution entirely on miss. Attenuate by the
+     * parent-texel dome visibility (dome-occlusion contract, see above). */
     if (hardware_hit_closure_is_specular_family(cl.type)) {
       LightProbeRay probe_ray = bxdf_lightprobe_ray(cl, P_hit, V, cl_thickness);
       probe_light = lightprobe_eval_with_direction(
           samp, cl, P_hit, V, cl_thickness, probe_ray.dominant_direction);
+      probe_light *= hardware_environment_visibility_load_filtered(texel_fullres, N).visibility;
     }
   }
 
@@ -2729,6 +2746,26 @@ void main()
                                                                uniform_buf.clamp.surface_indirect);
     float3 world_direction = miss_ray.direction;
     float environment_visibility = 1.0f;
+    if (lightprobe_uses_world(samp)) {
+      /* Hardware world misses must obey the same traced dome occlusion as the classic screen
+       * path (see `eevee_ray_trace_screen_comp.glsl`): an unmasked world fallback floods
+       * enclosed interiors with sky/HDRI light through every specular miss. Keep specular
+       * misses on their traced direction but attenuate them by the receiver's cross-filtered
+       * dome visibility; diffuse-GI misses additionally bend toward the visible dome. Without
+       * the visibility buffer, fail closed exactly like the screen path. */
+      if (use_hardware_rt_environment_visibility) {
+        HardwareEnvironmentVisibilityData env_visibility =
+            hardware_environment_visibility_load_filtered(miss_texel_fullres, Ng);
+        if (miss_is_diffuse_gi) {
+          world_direction = hardware_environment_visibility_direction(
+              env_visibility, miss_ray.direction, Ng);
+        }
+        environment_visibility = env_visibility.visibility;
+      }
+      else {
+        environment_visibility = 0.0f;
+      }
+    }
     float3 incoming_radiance = lightprobe_eval_direction(
         samp, miss_ray.origin, world_direction, ray_pdf_inv);
     incoming_radiance *= hardware_environment_miss_tint_load(texel);

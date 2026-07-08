@@ -4,10 +4,11 @@ This repository publishes the complete corresponding source for the Blender-Nuru
 
 - Exact Nuru source commit (macOS binary): `be4bb28fa8ba1855f02d67018c3fe63b9b9b67e1`
 - Exact Nuru source commit (Windows binary): `b83ce6bd7424ebb0cb6bae7ec9cbc3344af6fcba`
-- Exact Nuru source commit (Linux binary): `1cede61a48a0b910ab660b9ee52204c56bceca43`
+- Exact Nuru source commit (Linux binary): `ec87b62dbaa` (`SAPPHIRE 56`, release `v5.1.1-1.0`)
 - Public source snapshot: `Blender-Nuru 5.1.1-0.9.8 public source snapshot` plus the
   `Blender-Nuru 5.1.1-0.9.8 Windows public source update` (tag `v5.1.1-0.9.8-windows`) and the
-  `Blender-Nuru 5.1.1-0.9.8 Linux public source update` (tag `v5.1.1-0.9.8-linux`).
+  `Blender-Nuru 5.1.1-0.9.8 Linux public source update` (tag `v5.1.1-0.9.8-linux`), updated by
+  the `Blender-Nuru 5.1.1-1.0 Linux public source update` (tag `v5.1.1-1.0-linux`).
 - Runtime and build-required source assets, including the macOS prebuilt
   libraries under `lib/macos_arm64/`, are stored directly in Git.
 - The Windows prebuilt libraries are not stored in this repository; they are fetched from the
@@ -26,7 +27,8 @@ git lfs install --local --skip-smudge
 ```
 
 Use `git checkout v5.1.1-0.9.8-windows` instead for the exact source of the Windows binary, or
-`git checkout v5.1.1-0.9.8-linux` for the exact source of the Linux binary.
+`git checkout v5.1.1-1.0-linux` for the exact source of the current Linux binary
+(`v5.1.1-0.9.8-linux` remains for the previous Linux binary).
 
 For branch-based development instead of the pinned source tags:
 

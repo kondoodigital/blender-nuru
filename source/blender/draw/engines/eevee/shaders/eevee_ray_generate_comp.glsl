@@ -15,6 +15,24 @@ COMPUTE_SHADER_CREATE_INFO(eevee_ray_trace_scene_final_specular_resolve)
 #include "eevee_colorspace_lib.glsl"
 #include "eevee_gbuffer_read_lib.glsl"
 
+bool scene_final_closure_feature_enabled(ClosureType type)
+{
+  /* The scene-final phase runs whenever ANY HWRT specular feature is on, and the screen-trace
+   * baseline / denoise chain still carries radiance for the disabled closure family (the trace
+   * kernel per-texel early-out preserves the screen-traced radiance). Without this gate,
+   * enabling only Refractions visibly "activates" reflections (they composite the screen
+   * baseline), and vice versa. Only composite closure families whose feature bit is on. The
+   * mask is a specialization constant: the warm replay path re-executes this pass when the
+   * frame's uniform buffer already carries another phase's state. */
+  if (type == CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID) {
+    return (uint(scene_final_feature_mask) & (1u << 2u)) != 0u;
+  }
+  if (type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
+    return (uint(scene_final_feature_mask) & (1u << 3u)) != 0u;
+  }
+  return false;
+}
+
 void main()
 {
   int2 texel = int2(gl_GlobalInvocationID.xy);
@@ -45,10 +63,20 @@ void main()
     }
   }
 
+  bool any_enabled_specular_closure = false;
+  for (uchar i = 0; i < GBUFFER_LAYER_MAX && i < closure_count; i++) {
+    if (scene_final_closure_feature_enabled(gbuf.layer_get(i).type)) {
+      any_enabled_specular_closure = true;
+      break;
+    }
+  }
+
   if (use_shared_indirect) {
-    out_indirect = texelFetch(shared_indirect_tx, texel, 0).rgb;
-    if (is_thin_glass) {
-      out_indirect *= thin_glass_reflection_weight;
+    if (any_enabled_specular_closure) {
+      out_indirect = texelFetch(shared_indirect_tx, texel, 0).rgb;
+      if (is_thin_glass) {
+        out_indirect *= thin_glass_reflection_weight;
+      }
     }
     specular_indirect = out_indirect;
   }
@@ -58,6 +86,9 @@ void main()
     if ((cl.type != CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID) &&
         (cl.type != CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID))
     {
+      continue;
+    }
+    if (!scene_final_closure_feature_enabled(cl.type)) {
       continue;
     }
 
