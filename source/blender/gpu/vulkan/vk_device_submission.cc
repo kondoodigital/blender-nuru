@@ -13,6 +13,7 @@
 #include <thread>
 
 #include "BLI_mutex.hh"
+#include "BLI_system.h"
 #include "BLI_task.h"
 
 #include "vk_device.hh"
@@ -180,6 +181,40 @@ void VKDevice::wait_for_timeline(TimelineValue timeline)
 
 void VKDevice::diagnostic_checkpoints_dump()
 {
+  /* Nuru: wedge diagnostic. Print the timeline-chain state on every call: the gap between
+   * `claimed`, `submitted`, and `gpu_signaled` classifies a stalled wait. A wait on a value
+   * above `submitted` means the owner never reached `vkQueueSubmit` (CPU-side stall: runner
+   * blocked or a claimed value dropped); a wait on a value at or below `submitted` but above
+   * `gpu_signaled` means the submission sits on the queue blocked by an unsatisfied semaphore
+   * dependency (GPU-side chain stall). */
+  {
+    TimelineValue gpu_signaled = 0;
+    vkGetSemaphoreCounterValue(vk_device_, vk_timeline_semaphore_, &gpu_signaled);
+    TimelineValue claimed = 0;
+    {
+      std::scoped_lock lock(orphaned_data.mutex_get());
+      claimed = timeline_value_;
+    }
+    fprintf(stderr,
+            "[NURU_VK_WEDGE] timeline state: claimed=%llu submitted=%llu gpu_signaled=%llu\n",
+            (unsigned long long)claimed,
+            (unsigned long long)queue_submitted_timeline_.load(std::memory_order_acquire),
+            (unsigned long long)gpu_signaled);
+    fflush(stderr);
+  }
+
+  /* All-thread backtraces, once per process: names the thread (and code site) every stuck
+   * participant is blocked in. */
+  {
+    static std::atomic<bool> backtraced = false;
+    if (!backtraced.exchange(true)) {
+      fprintf(stderr, "[NURU_VK_WEDGE] all-thread backtrace begin\n");
+      BLI_system_backtrace(stderr);
+      fprintf(stderr, "[NURU_VK_WEDGE] all-thread backtrace end\n");
+      fflush(stderr);
+    }
+  }
+
   /* Nuru: VK_NV_device_diagnostic_checkpoints wedge diagnostic (BLENDER_VULKAN_CHECKPOINTS=1).
    * Reports the last checkpoint markers that started/completed execution on the queue, naming
    * the render-graph node where the GPU wedged. Only the first caller dumps; afterwards the
@@ -350,14 +385,48 @@ void VKDevice::submission_runner(TaskPool *__restrict pool, void *task_data)
       CLOG_TRACE(&LOG, "Submitting %u render graph nodes to device.", uint32_t(num_nodes));
       num_nodes = 0;
 
+      /* Nuru: submissions must reach the queue in timeline-claim order. This batch waits on
+       * `timeline - 1`; if that value belongs to an external RT batch that claimed it but has
+       * not reached `vkQueueSubmit` yet, submitting this batch first would park the queue
+       * front-end on a wait whose signal is submitted later on the SAME queue - the queue then
+       * never starts the signaling batch (observed deadlock: TLAS build batch stuck >60s, GPU
+       * idle, no TDR, claimed=N+1 submitted=N gpu_signaled=N-1). Externals wait symmetrically
+       * before their own submits, so the order forms a total chain and cannot cycle. */
+      device->wait_for_submission_timeline(submit_task->timeline - 1);
+
+      VkResult submit_result = VK_SUCCESS;
       {
         std::scoped_lock lock_queue(*device->queue_mutex_);
-        vkQueueSubmit(device->vk_queue_, 1, &vk_submit_info, submit_task->signal_fence);
+        submit_result = vkQueueSubmit(
+            device->vk_queue_, 1, &vk_submit_info, submit_task->signal_fence);
+      }
+      if (submit_result != VK_SUCCESS) {
+        /* Nuru: a dropped submission must still signal its claimed timeline value; every later
+         * graph submission and external RT batch waits on it and would deadlock forever (the
+         * external paths already CPU-signal on their own submit failures). */
+        CLOG_ERROR(&LOG,
+                   "Vulkan: render graph vkQueueSubmit failed [%s]; CPU-signaling timeline %llu "
+                   "to unblock waiters",
+                   to_string(submit_result),
+                   (unsigned long long)submit_task->timeline);
+        VkSemaphoreSignalInfo signal_info = {};
+        signal_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO;
+        signal_info.semaphore = device->vk_timeline_semaphore_;
+        signal_info.value = submit_task->timeline;
+        vkSignalSemaphore(device->vk_device_, &signal_info);
+        device->diagnostic_checkpoints_dump();
       }
       {
-        /* Nuru: publish queue-submission progress for external direct submitters. */
+        /* Nuru: publish queue-submission progress for external direct submitters. Monotonic:
+         * an external batch with a higher claimed value may have published already, and a
+         * regressing store would strand later `wait_for_submission_timeline` callers. */
         std::scoped_lock lock(device->queue_submitted_mutex_);
-        device->queue_submitted_timeline_.store(submit_task->timeline, std::memory_order_release);
+        if (submit_task->timeline >
+            device->queue_submitted_timeline_.load(std::memory_order_acquire))
+        {
+          device->queue_submitted_timeline_.store(submit_task->timeline,
+                                                  std::memory_order_release);
+        }
         device->queue_submitted_condition_.notify_all();
       }
       if (submit_task->wait_for_submission != nullptr) {

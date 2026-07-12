@@ -1227,10 +1227,26 @@ void GHOST_WindowWin32::registerWindowAppUserModelProperties()
   char blender_path[MAX_PATH];
   wchar_t shell_command[MAX_PATH];
 
-  /* Find the current executable, and see if it's blender.exe if not bail out. */
+  /* Find the current executable and map it to its launcher; bail for unknown binaries.
+   * Nuru: the Windows product binary is `Blender-Nuru.exe` (vanilla: `blender.exe`). The
+   * vanilla literal `strstr` match never matched the product name, so these AppUserModel
+   * window properties were skipped entirely and Windows 11 showed a blank taskbar icon for
+   * the running window (the explicit process AppUserModelID resolves no shortcut and no
+   * relaunch command without them). */
   GetModuleFileName(0, blender_path, sizeof(blender_path));
-  char *blender_app = strstr(blender_path, "blender.exe");
-  if (!blender_app) {
+  char *basename = strrchr(blender_path, '\\');
+  basename = basename ? basename + 1 : blender_path;
+  const char *launcher_name = nullptr;
+  if (_stricmp(basename, "blender.exe") == 0) {
+    launcher_name = "blender-launcher.exe";
+  }
+  else if (_stricmp(basename, "Blender-Nuru.exe") == 0) {
+    launcher_name = "Blender-Nuru-launcher.exe";
+  }
+  if (launcher_name == nullptr) {
+    return;
+  }
+  if (size_t(basename - blender_path) + strlen(launcher_name) + 1 > sizeof(blender_path)) {
     return;
   }
 
@@ -1241,7 +1257,7 @@ void GHOST_WindowWin32::registerWindowAppUserModelProperties()
 
   /* Set the launcher as the shell command so the console window will not flash.
    * when people pin blender to the taskbar. */
-  strcpy(blender_app, "blender-launcher.exe");
+  strcpy(basename, launcher_name);
   wsprintfW(shell_command, L"\"%S\"", blender_path);
   UTF16_ENCODE(BLENDER_WIN_APPID);
   UTF16_ENCODE(BLENDER_WIN_APPID_FRIENDLY_NAME);

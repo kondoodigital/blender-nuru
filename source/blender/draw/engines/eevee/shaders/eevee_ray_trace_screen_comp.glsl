@@ -469,6 +469,18 @@ void main()
         radiance = float3(0.0f);
         hit.time = 10000.0f;
       }
+      else if (uniform_buf.raytrace.use_hardware_tracing_method &&
+               !screen_hit_closure_is_diffuse_gi(closure_type) && lightprobe_uses_world(samp))
+      {
+        /* Nuru: under the hardware method, specular world misses belong to the HWRT kernel's
+         * traced miss path, which has true per-ray occlusion. The probe-world fallback here is
+         * only attenuated by the primary surface's hemispheric dome visibility, so it leaks
+         * (sun-extracted, pale) sky around real occluders onto every hybrid specular texel as
+         * soon as the environment feature enables the world probe (white-blue wash on metals
+         * in enclosed warm interiors). No hybrid world fill: RT owns the environment. */
+        radiance = float3(0.0f);
+        hit.time = 10000.0f;
+      }
       else {
         /* Clamp SH to have parity with forward evaluation. */
         float clamp_indirect = uniform_buf.clamp.surface_indirect;

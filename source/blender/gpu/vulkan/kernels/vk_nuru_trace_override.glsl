@@ -816,7 +816,14 @@ void main()
     return;
   }
   vec3 ray_origin = point_screen_to_world(uv, depth);
-  {
+  /* SAPPHIRE 12 seam-leak slack is a GI-launch-only correction (see its shadow/visibility kernel
+   * siblings). Applying it to specular launches has no Metal counterpart: reflection/refraction
+   * rays must start exactly on the surface. On curved refractive objects the per-pixel depth
+   * gradient made the slack pull every launch toward the camera (centimetres near the limb), so
+   * refracted rays entered the glass ahead of the real surface and clipped through to the
+   * background in a flat band (the classroom glass-sphere "plate"/square artifact; absent on
+   * Metal, which has no launch slack). */
+  if (supports_hardware_gi) {
     vec3 launch_N;
     if (load_gbuffer_surface_normal(
             texel_fullres, gbuf_header, uint(uniforms.closure_index), gbuf_normal_tx, launch_N))

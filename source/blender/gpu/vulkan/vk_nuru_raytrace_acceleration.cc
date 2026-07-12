@@ -460,6 +460,12 @@ static bool raytrace_command_buffer_submit_and_wait(VkCommandBuffer command_buff
   TimelineValue chain_wait_value = 0;
   const TimelineValue chain_signal_value = device.external_timeline_chain_acquire(
       &chain_wait_value);
+  /* Submission-order discipline: the value we wait on may be claimed by a render-graph task
+   * still sitting in the submission runner's queue. Submitting this batch first would park
+   * the queue front-end on a wait whose signal arrives in a LATER submission on the same
+   * queue - the queue never reaches it (observed: TLAS build batch wedge on object move,
+   * GPU idle, no TDR). Block until everything up to the wait value reached `vkQueueSubmit`. */
+  device.wait_for_submission_timeline(chain_wait_value);
   VkSemaphore timeline_semaphore = device.timeline_semaphore_get();
   VkPipelineStageFlags chain_wait_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
   VkTimelineSemaphoreSubmitInfo timeline_info = {};
@@ -494,8 +500,19 @@ static bool raytrace_command_buffer_submit_and_wait(VkCommandBuffer command_buff
     }
   }
   device.external_timeline_chain_submitted(chain_signal_value);
-  const VkResult wait_result = vkWaitForFences(
-      device.vk_handle(), 1, &fence, VK_TRUE, uint64_t(60) * 1000 * 1000 * 1000);
+  /* First slice short: a healthy build batch completes in milliseconds, so a 5 s stall is
+   * already a wedge; dump diagnostics before the app gets killed as "Not Responding". */
+  VkResult wait_result = vkWaitForFences(
+      device.vk_handle(), 1, &fence, VK_TRUE, uint64_t(5) * 1000 * 1000 * 1000);
+  if (wait_result == VK_TIMEOUT) {
+    fprintf(stderr,
+            "Vulkan RT build-batch stalled >5s (chain wait=%llu signal=%llu); dumping state\n",
+            (unsigned long long)chain_wait_value,
+            (unsigned long long)chain_signal_value);
+    device.diagnostic_checkpoints_dump();
+    wait_result = vkWaitForFences(
+        device.vk_handle(), 1, &fence, VK_TRUE, uint64_t(55) * 1000 * 1000 * 1000);
+  }
   if (wait_result != VK_SUCCESS) {
     fprintf(stderr, "Vulkan RT build-batch wait failed with status=%d\n", int(wait_result));
     device.diagnostic_checkpoints_dump();
@@ -2357,6 +2374,8 @@ static bool submission_end(NuruVKSubmission *submission, const bool wait)
   TimelineValue chain_wait_value = 0;
   const TimelineValue chain_signal_value = device.external_timeline_chain_acquire(
       &chain_wait_value);
+  /* Submission-order discipline; see `raytrace_command_buffer_submit_and_wait`. */
+  device.wait_for_submission_timeline(chain_wait_value);
   VkSemaphore timeline_semaphore = device.timeline_semaphore_get();
   VkPipelineStageFlags chain_wait_stage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
   VkTimelineSemaphoreSubmitInfo timeline_info = {};

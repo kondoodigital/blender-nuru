@@ -112,6 +112,17 @@ void main()
     if (!use_hardware_rt_environment_visibility && lightprobe_uses_world(samp)) {
       radiance = float3(0.0f);
     }
+    else if (uniform_buf.raytrace.use_hardware_tracing_method &&
+             !((surface_closure.type == CLOSURE_BSDF_DIFFUSE_ID) ||
+               (surface_closure.type == CLOSURE_BSSRDF_BURLEY_ID)) &&
+             lightprobe_uses_world(samp))
+    {
+      /* Nuru: same rule as the screen-trace shader. Specular world misses are owned by the
+       * HWRT kernel's traced miss path (true per-ray occlusion); the probe-world fill here
+       * only carries the primary surface's hemispheric dome visibility and leaks pale sky
+       * around real occluders. No hybrid world fill: RT owns the environment. */
+      radiance = float3(0.0f);
+    }
     else {
     /* Clamp SH to have parity with forward evaluation. */
       float clamp_indirect = uniform_buf.clamp.surface_indirect;
