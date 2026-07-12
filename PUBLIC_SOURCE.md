@@ -24,7 +24,7 @@ This repository publishes the complete corresponding source for the Blender-Nuru
 ```sh
 GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/kondoodigital/blender-nuru.git Nuru
 cd Nuru
-git checkout v5.1.1-0.9.8
+git checkout v5.1.1-1.0-macos
 git lfs install --local --skip-smudge
 ```
 
