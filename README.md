@@ -58,7 +58,7 @@ Nuru is a hybrid real-time renderer built for interactive viewport work and fast
 
 ## Install On macOS
 
-**Installer DMG (recommended):** download and open `Blender-Nuru-macos-<version>.dmg` from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases), then double-click **Install Blender-Nuru**. The installer copies `Blender-Nuru.app` to `/Applications`, clears the download quarantine flag (Blender-Nuru is not distributed through Apple notarization), and registers the app with Launchpad. If macOS blocks the installer itself on first open, right-click it and choose **Open** once.
+**Installer DMG (recommended):** download and open `Blender-Nuru-macos-<version>.dmg` from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases), then double-click **Install Blender-Nuru**. The installer asks for your administrator password, copies `Blender-Nuru.app` to `/Applications`, clears the download quarantine flag (Blender-Nuru is not distributed through Apple notarization), and registers the app with Launchpad. Because the installer itself is downloaded and not notarized, macOS may block its first start: approve it under **System Settings > Privacy & Security > Open Anyway** (on older macOS versions, right-click the installer and choose **Open**), then run it again.
 
 **Portable zip:**
 

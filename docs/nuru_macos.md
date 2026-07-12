@@ -16,11 +16,11 @@ Blender-Nuru for macOS runs Eevee on the Metal graphics backend with Nuru hardwa
 ### Installer DMG (recommended)
 
 1. Download **`Blender-Nuru-macos-<version>.dmg`** from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases) and open it.
-2. Double-click **Install Blender-Nuru**.
+2. Double-click **Install Blender-Nuru** and enter your administrator password when asked.
 3. The installer copies **`Blender-Nuru.app`** to **`/Applications`**, clears the download quarantine flag, and registers the app with Launchpad.
 4. Start **Blender-Nuru** from Applications or Launchpad.
 
-If macOS blocks the installer itself on first open, right-click **Install Blender-Nuru** and choose **Open** once.
+Because the installer itself is downloaded and not notarized, macOS may block its first start. Approve it once under **System Settings > Privacy & Security > Open Anyway** (on older macOS versions, right-click **Install Blender-Nuru** and choose **Open**), then run it again.
 
 ### Portable zip
 
