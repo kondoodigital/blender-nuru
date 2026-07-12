@@ -2,14 +2,15 @@
 
 This repository publishes the complete corresponding source for the Blender-Nuru public source snapshot.
 
-- Exact Nuru source commit (macOS binary): `be4bb28fa8ba1855f02d67018c3fe63b9b9b67e1`
+- Exact Nuru source commit (macOS binary): `c1f88d08439` (`RUBY 44`, release `v5.1.1-1.0`)
 - Exact Nuru source commit (Windows binary): `b65404962f5` (`EMERALD 38`, release `v5.1.1-1.0`)
 - Exact Nuru source commit (Linux binary): `ec87b62dbaa` (`SAPPHIRE 56`, release `v5.1.1-1.0`)
 - Public source snapshot: `Blender-Nuru 5.1.1-0.9.8 public source snapshot` plus the
   `Blender-Nuru 5.1.1-0.9.8 Windows public source update` (tag `v5.1.1-0.9.8-windows`) and the
   `Blender-Nuru 5.1.1-0.9.8 Linux public source update` (tag `v5.1.1-0.9.8-linux`), updated by
   the `Blender-Nuru 5.1.1-1.0 Linux public source update` (tag `v5.1.1-1.0-linux`)
-  and the `Blender-Nuru 5.1.1-1.0 Windows public source update` (tag `v5.1.1-1.0-windows`).
+  the `Blender-Nuru 5.1.1-1.0 Windows public source update` (tag `v5.1.1-1.0-windows`),
+  and the `Blender-Nuru 5.1.1-1.0 macOS public source update` (tag `v5.1.1-1.0-macos`).
 - Runtime and build-required source assets, including the macOS prebuilt
   libraries under `lib/macos_arm64/`, are stored directly in Git.
 - The Windows prebuilt libraries are not stored in this repository; they are fetched from the
@@ -27,7 +28,8 @@ git checkout v5.1.1-0.9.8
 git lfs install --local --skip-smudge
 ```
 
-Use `git checkout v5.1.1-1.0-windows` for the exact source of the current Windows binary, or
+Use `git checkout v5.1.1-1.0-macos` for the exact source of the current macOS binary,
+`git checkout v5.1.1-1.0-windows` for the exact source of the current Windows binary, or
 `git checkout v5.1.1-1.0-linux` for the exact source of the current Linux binary
 (`v5.1.1-0.9.8-windows` and `v5.1.1-0.9.8-linux` remain for the previous binaries).
 
@@ -162,4 +164,4 @@ ctest --test-dir builds/macos-dev
 
 ## Binary Distribution
 
-Do not use Git LFS as the public distribution path for Blender-Nuru binaries. Publish binaries through GitHub Releases or another artifact host, and pin each binary release to the exact source tag or commit used to build it. The macOS binary for this snapshot is published as a GitHub Release asset on the `v5.1.1-0.9.8` release; the Windows installer and zip and the Linux `.deb` and `.tar.gz` are published on the `v5.1.1-1.0` release and correspond to the `v5.1.1-1.0-windows` and `v5.1.1-1.0-linux` source tags respectively.
+Do not use Git LFS as the public distribution path for Blender-Nuru binaries. Publish binaries through GitHub Releases or another artifact host, and pin each binary release to the exact source tag or commit used to build it. The macOS DMG and zip, the Windows installer and zip, and the Linux `.deb` and `.tar.gz` are all published on the `v5.1.1-1.0` release and correspond to the `v5.1.1-1.0-macos`, `v5.1.1-1.0-windows`, and `v5.1.1-1.0-linux` source tags respectively.

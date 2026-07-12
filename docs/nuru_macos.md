@@ -13,13 +13,24 @@ Blender-Nuru for macOS runs Eevee on the Metal graphics backend with Nuru hardwa
 
 ## Install
 
-1. Download the macOS zip from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases).
-2. Unzip it and move **`Blender-Nuru.app`** to **`/Applications`**.
+### Installer DMG (recommended)
+
+1. Download **`Blender-Nuru-macos-<version>.dmg`** from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases) and open it.
+2. Double-click **Install Blender-Nuru**.
+3. The installer copies **`Blender-Nuru.app`** to **`/Applications`**, clears the download quarantine flag, and registers the app with Launchpad.
+4. Start **Blender-Nuru** from Applications or Launchpad.
+
+If macOS blocks the installer itself on first open, right-click **Install Blender-Nuru** and choose **Open** once.
+
+### Portable zip
+
+1. Download the macOS zip from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases) and unzip it.
+2. Double-click **Install Blender-Nuru** inside the unzipped folder, or install manually: move **`Blender-Nuru.app`** to **`/Applications`** and clear the quarantine attribute once from a terminal (see below).
 3. Start **Blender-Nuru** from Applications or Launchpad.
 
 ### Gatekeeper
 
-The build is not code-signed, so Gatekeeper may report the app as damaged on first start. Remove the quarantine attribute once from a terminal:
+The build is not code-signed, so Gatekeeper may report the app as damaged on first start if the quarantine flag was not cleared. The installer clears it for you; for a manual install, remove it once from a terminal:
 
 ```sh
 xattr -dr com.apple.quarantine /Applications/Blender-Nuru.app
@@ -45,6 +56,7 @@ Denoising on macOS runs through **OpenImageDenoise** on the GPU. The **Denoiser*
 | --- | --- |
 | Nuru Quick Settings do not appear | Confirm Apple Silicon M3 or newer and macOS 14 or newer. M1/M2 are not supported. |
 | Gatekeeper reports the app as damaged | Run the `xattr` command above once, then start the app again. |
+| macOS still refuses to open the app after the `xattr` command | Re-download the archive, replace the app in `/Applications` with a fresh copy, and run the command again before the first launch. |
 | The first rendered frame is slow | Shaders and pipelines warm up on the first render after installation; later frames are much faster. |
 
 ## Related

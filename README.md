@@ -30,13 +30,13 @@
       <td align="center">NVIDIA RTX &middot; Vulkan</td>
     </tr>
     <tr>
-      <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-1.0/Blender-Nuru-windows-5.1.1-1.0.exe"><strong>Installer 5.1.1-1.0</strong></a><br/><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-1.0/Blender-Nuru-windows-5.1.1-1.0.zip">Portable Zip</a></td>
-      <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-macos-5.1.1-0.9.8.zip"><strong>Download 5.1.1-0.9.8</strong></a></td>
+      <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-windows-5.1.1-0.9.8.exe"><strong>Installer 5.1.1-0.9.8</strong></a><br/><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-0.9.8/Blender-Nuru-windows-5.1.1-0.9.8.zip">Portable Zip</a></td>
+      <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-1.0/Blender-Nuru-macos-5.1.1-1.0.dmg"><strong>Installer DMG 5.1.1-1.0</strong></a><br/><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-1.0/Blender-Nuru-macos-5.1.1-1.0.zip">Portable Zip</a></td>
       <td align="center"><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-1.0/Blender-Nuru-linux-5.1.1-1.0.deb"><strong>Deb Package 5.1.1-1.0</strong></a><br/><a href="https://github.com/kondoodigital/blender-nuru/releases/download/v5.1.1-1.0/Blender-Nuru-linux-5.1.1-1.0.tar.gz">Portable Tar</a></td>
     </tr>
   </table>
 
-  <p>The builds are unsigned: see <a href="#install-on-windows">Install On Windows</a> and <a href="#install-on-macos">Install On macOS</a> below, or the platform pages on the documentation site.</p>
+  <p>The builds are unsigned: installation and first-start notes (SmartScreen, Gatekeeper) are on the documentation site.</p>
 </div>
 
 ## Nuru
@@ -56,21 +56,14 @@ Nuru is a hybrid real-time renderer built for interactive viewport work and fast
 - **Denoiser choice** — OpenImageDenoise or the NVIDIA OptiX denoiser (Windows), both zero-copy in the same pipeline.
 - **Many lights welcome** — light selection scales to scenes full of practicals and fixtures.
 
-## Install On Windows
+## Install On macOS
 
-**Installer (recommended):** download and run `Blender-Nuru-windows-<version>.exe`. The wizard shows the GPL license, lets you pick the install folder, and creates Start Menu and Desktop shortcuts. Uninstall any time from **Settings > Apps**. If SmartScreen warns about an unrecognized app, choose **More info > Run anyway**.
+**Installer DMG (recommended):** download and open `Blender-Nuru-macos-<version>.dmg` from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases), then double-click **Install Blender-Nuru**. The installer copies `Blender-Nuru.app` to `/Applications`, clears the download quarantine flag (Blender-Nuru is not distributed through Apple notarization), and registers the app with Launchpad. If macOS blocks the installer itself on first open, right-click it and choose **Open** once.
 
 **Portable zip:**
 
-1. Download the Windows zip and unzip it anywhere you like, for example `C:\Programs\Blender-Nuru`.
-2. Start `Blender-Nuru.exe`, or `Blender-Nuru-launcher.exe` to start without a console window.
-
-Full Windows notes: [Nuru On Windows](https://kondoodigital.github.io/blender-nuru/docs/nuru_windows.html).
-
-## Install On macOS
-
-1. Download the macOS zip, unzip it, and move `Blender-Nuru.app` to `/Applications`.
-2. macOS marks downloaded apps with a quarantine flag, and Blender-Nuru is not distributed through Apple notarization. Clear the flag once in **Terminal**:
+1. Download the macOS zip from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases).
+2. Unzip it and either double-click **Install Blender-Nuru** inside, or move `Blender-Nuru.app` to `/Applications` yourself and clear the quarantine flag once in **Terminal**:
 
 ```sh
 xattr -dr com.apple.quarantine /Applications/Blender-Nuru.app
@@ -79,6 +72,18 @@ xattr -dr com.apple.quarantine /Applications/Blender-Nuru.app
 3. Start **Blender-Nuru** from Applications or Launchpad.
 
 Full macOS notes: [Nuru On macOS](https://kondoodigital.github.io/blender-nuru/docs/nuru_macos.html).
+
+## Install On Windows
+
+**Installer (recommended):** download and run `Blender-Nuru-windows-<version>.exe` from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases). The wizard shows the GPL license, lets you pick the install folder, and creates Start Menu and Desktop shortcuts. Uninstall any time from **Settings > Apps**.
+
+**Portable zip:**
+
+1. Download the Windows zip from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases).
+2. Unzip it anywhere you like, for example `C:\Programs\Blender-Nuru`.
+3. Start `Blender-Nuru.exe`, or `Blender-Nuru-launcher.exe` to start without a console window.
+
+Full Windows notes: [Nuru On Windows](https://kondoodigital.github.io/blender-nuru/docs/nuru_windows.html).
 
 ## Documentation
 

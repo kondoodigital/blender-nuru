@@ -1770,9 +1770,13 @@ void RayTraceModule::render_directional_shadow_visibility(View &render_view,
   hardware_direct_light_denoised_tx_.clear(float4(0.0f));
   hardware_direct_light_depth_tx_.clear(float4(0.0f));
   hardware_direct_light_tilemask_tx_.clear(uint4(0u));
-  /* No flush needed: the Vulkan backend flushes the render graph and waits for queue
-   * submission before every kernel dispatch, and Metal commits in CPU order. The extra
-   * flush only split the frame into more queue submissions. */
+  /* This flush is load-bearing on Metal: the Nuru trace kernels submit raw command buffers
+   * directly on the device queue, bypassing the backend's lazily-committed main command
+   * buffer that carries the clears above. Without the flush the kernel command buffer can
+   * reach the queue first and consume uninitialized data (July 12 2026 Apple Silicon GPU
+   * wedge: WindowServer watchdog panic with the queue stuck in AGX). Vulkan flushes inside
+   * `dispatch_kernel()` regardless. */
+  GPU_flush();
 
   Vector<LightData> local_lights;
   Vector<LightData> sun_lights;
@@ -1987,9 +1991,9 @@ void RayTraceModule::render_environment_visibility(View &render_view,
   hardware_environment_visibility_tx_.ensure_2d(
       gpu::TextureFormat::SFLOAT_16_16_16_16, extent, usage_rw);
   hardware_environment_visibility_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
-  /* No flush needed: the Vulkan backend flushes the render graph and waits for queue
-   * submission before every kernel dispatch, and Metal commits in CPU order. The extra
-   * flush only split the frame into more queue submissions. */
+  /* Load-bearing on Metal: commit the pending clears before the raw-queue kernel command
+   * buffer (see `render_directional_shadow_visibility`). */
+  GPU_flush();
 
   const double scene_acquire_start = perf_logging_enabled ? BLI_time_now_seconds() : 0.0;
   GPUHardwareRaytraceSceneStats rt_scene_stats;
@@ -2051,8 +2055,9 @@ void RayTraceModule::render_secondary_environment_visibility(GPUHardwareRaytrace
   hardware_secondary_environment_visibility_tx_.ensure_2d(
       gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_extent, usage_rw);
   hardware_secondary_environment_visibility_tx_.clear(float4(0.0f, 0.0f, 0.0f, 1.0f));
-  /* No flush: the clear and the visibility kernel execute in queue order on the same GPU queue;
-   * the submission break only added CPU cost per closure call. */
+  /* Load-bearing on Metal: commit the pending clear before the raw-queue kernel command
+   * buffer (see `render_directional_shadow_visibility`). */
+  GPU_flush();
 
   GPUHardwareRaytraceHitEnvironmentVisibilityParams env_params;
   env_params.hit_normal_tx = hit_normal_tx_;
@@ -2107,9 +2112,9 @@ void RayTraceModule::render_hit_shadow_visibility(GPUHardwareRaytraceScene *rt_s
   shadow_visibility_tx.ensure_2d_array(
       gpu::TextureFormat::SFLOAT_16_16_16_16, tracing_extent, total_light_count, usage_rw);
   shadow_visibility_tx.clear(float4(1.0f));
-  /* No flush needed: the Vulkan backend flushes the render graph and waits for queue
-   * submission before every kernel dispatch, and Metal commits in CPU order. The extra
-   * flush only split the frame into more queue submissions. */
+  /* Load-bearing on Metal: commit the pending clears before the raw-queue kernel command
+   * buffer (see `render_directional_shadow_visibility`). */
+  GPU_flush();
 
   Vector<LightData> local_lights;
   Vector<LightData> sun_lights;
@@ -2329,9 +2334,12 @@ void RayTraceModule::submit_hardware_tracing_backend(View &render_view)
   transmission_receiver_world_position_tx_.clear(float4(0.0f));
   transmission_receiver_identity_tx_.clear(uint4(0u));
   transmission_receiver_barycentric_tx_.clear(float4(0.0f));
-  /* No flush needed: the Vulkan backend flushes the render graph and waits for queue
-   * submission before every kernel dispatch, and Metal commits in CPU order. The extra
-   * flush only split the frame into more queue submissions. */
+  /* Load-bearing on Metal: the tile-compact pass above writes the indirect dispatch arguments
+   * and the clears initialize every kernel payload texture, all inside the backend's
+   * lazily-committed main command buffer. The raw-queue trace kernel command buffer must not
+   * reach the queue first (July 12 2026 Apple Silicon GPU wedge; see
+   * `render_directional_shadow_visibility`). */
+  GPU_flush();
   const double clears_ms = perf_logging_enabled ?
                                (BLI_time_now_seconds() - clears_start) * 1000.0 :
                                0.0;

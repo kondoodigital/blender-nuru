@@ -36,14 +36,25 @@
   </table>
 
   <h2>Install</h2>
+
+  <h3>Installer DMG (recommended)</h3>
   <ol>
-    <li>Download the macOS zip from the <a href="https://github.com/kondoodigital/blender-nuru/releases">Releases page</a>.</li>
-    <li>Unzip it and move <strong><code>Blender-Nuru.app</code></strong> to <strong><code>/Applications</code></strong>.</li>
+    <li>Download <strong><code>Blender-Nuru-macos-&lt;version&gt;.dmg</code></strong> from the <a href="https://github.com/kondoodigital/blender-nuru/releases">Releases page</a> and open it.</li>
+    <li>Double-click <strong>Install Blender-Nuru</strong>.</li>
+    <li>The installer copies <strong><code>Blender-Nuru.app</code></strong> to <strong><code>/Applications</code></strong>, clears the download quarantine flag, and registers the app with Launchpad.</li>
+    <li>Start <strong>Blender-Nuru</strong> from Applications or Launchpad.</li>
+  </ol>
+  <p class="note">If macOS blocks the installer itself on first open, right-click <strong>Install Blender-Nuru</strong> and choose <strong>Open</strong> once.</p>
+
+  <h3>Portable zip</h3>
+  <ol>
+    <li>Download the macOS zip from the <a href="https://github.com/kondoodigital/blender-nuru/releases">Releases page</a> and unzip it.</li>
+    <li>Double-click <strong>Install Blender-Nuru</strong> inside the unzipped folder, or install manually: move <strong><code>Blender-Nuru.app</code></strong> to <strong><code>/Applications</code></strong> and clear the quarantine attribute once from a terminal (see below).</li>
     <li>Start <strong>Blender-Nuru</strong> from Applications or Launchpad.</li>
   </ol>
 
   <h3>Gatekeeper</h3>
-  <p class="note">The build is not code-signed, so Gatekeeper may report the app as damaged on first start. Remove the quarantine attribute once from a terminal:</p>
+  <p class="note">The build is not code-signed, so Gatekeeper may report the app as damaged on first start if the quarantine flag was not cleared. The installer clears it for you; for a manual install, remove it once from a terminal:</p>
   <pre><code>xattr -dr com.apple.quarantine /Applications/Blender-Nuru.app</code></pre>
 
   <h2>Enable Nuru</h2>
@@ -64,6 +75,7 @@
     <tr><th>Symptom</th><th>What to do</th></tr>
     <tr><td>Nuru Quick Settings do not appear</td><td>Confirm Apple Silicon M3 or newer and macOS 14 or newer. M1/M2 are not supported.</td></tr>
     <tr><td>Gatekeeper reports the app as damaged</td><td>Run the <code>xattr</code> command above once, then start the app again.</td></tr>
+    <tr><td>macOS still refuses to open the app after the <code>xattr</code> command</td><td>Re-download the archive, replace the app in <strong>/Applications</strong> with a fresh copy, and run the command again before the first launch.</td></tr>
     <tr><td>The first rendered frame is slow</td><td>Shaders and pipelines warm up on the first render after installation; later frames are much faster.</td></tr>
   </table>
 
