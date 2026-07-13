@@ -3,7 +3,7 @@
 This repository publishes the complete corresponding source for the Blender-Nuru public source snapshot.
 
 - Exact Nuru source commit (macOS binary): `0e9b94f620d` (`RUBY 49`, release `v5.1.1-1.0`)
-- Exact Nuru source commit (Windows binary): `b65404962f5` (`EMERALD 38`, release `v5.1.1-1.0`)
+- Exact Nuru source commit (Windows binary): `98366ee9445` (`EMERALD 40`, release `v5.1.1-1.0`)
 - Exact Nuru source commit (Linux binary): `ec87b62dbaa` (`SAPPHIRE 56`, release `v5.1.1-1.0`)
 - Public source snapshot: `Blender-Nuru 5.1.1-0.9.8 public source snapshot` plus the
   `Blender-Nuru 5.1.1-0.9.8 Windows public source update` (tag `v5.1.1-0.9.8-windows`) and the
@@ -12,7 +12,9 @@ This repository publishes the complete corresponding source for the Blender-Nuru
   the `Blender-Nuru 5.1.1-1.0 Windows public source update` (tag `v5.1.1-1.0-windows`),
   and the `Blender-Nuru 5.1.1-1.0 macOS public source update`, refreshed by
   `Blender-Nuru 5.1.1-1.0 macOS Shadow Catcher source refresh`
-  (tag `v5.1.1-1.0-macos`).
+  (tag `v5.1.1-1.0-macos`), then the
+  `Blender-Nuru 5.1.1-1.0 Windows Shadow Catcher source refresh`
+  (tag `v5.1.1-1.0-windows-shadow-catcher`).
 - Runtime and build-required source assets, including the macOS prebuilt
   libraries under `lib/macos_arm64/`, are stored directly in Git.
 - The Windows prebuilt libraries are not stored in this repository; they are fetched from the
@@ -31,9 +33,9 @@ git lfs install --local --skip-smudge
 ```
 
 Use `git checkout v5.1.1-1.0-macos` for the exact source of the current macOS binary,
-`git checkout v5.1.1-1.0-windows` for the exact source of the current Windows binary, or
+`git checkout v5.1.1-1.0-windows-shadow-catcher` for the exact source of the current Windows binary, or
 `git checkout v5.1.1-1.0-linux` for the exact source of the current Linux binary
-(`v5.1.1-0.9.8-windows` and `v5.1.1-0.9.8-linux` remain for the previous binaries).
+(`v5.1.1-1.0-windows`, `v5.1.1-0.9.8-windows`, and `v5.1.1-0.9.8-linux` remain for previous binaries).
 
 For branch-based development instead of the pinned source tags:
 
@@ -166,8 +168,8 @@ ctest --test-dir builds/macos-dev
 
 ## Binary Distribution
 
-Do not use Git LFS as the public distribution path for Blender-Nuru binaries. Publish binaries through GitHub Releases or another artifact host, and pin each binary release to the exact source tag or commit used to build it. The macOS DMG and zip, the Windows installer and zip, and the Linux `.deb` and `.tar.gz` are all published on the `v5.1.1-1.0` release and correspond to the `v5.1.1-1.0-macos`, `v5.1.1-1.0-windows`, and `v5.1.1-1.0-linux` source tags respectively.
+Do not use Git LFS as the public distribution path for Blender-Nuru binaries. Publish binaries through GitHub Releases or another artifact host, and pin each binary release to the exact source tag or commit used to build it. The macOS DMG and zip, the Windows installer and zip, and the Linux `.deb` and `.tar.gz` are all published on the `v5.1.1-1.0` release and correspond to the `v5.1.1-1.0-macos`, `v5.1.1-1.0-windows-shadow-catcher`, and `v5.1.1-1.0-linux` source tags respectively.
 
-The refreshed macOS 1.0 package includes Direct Shadow Catcher. The current Windows and Linux
-1.0 binaries remain the earlier builds from `b65404962f5` and `ec87b62dbaa`; their package
-refreshes will follow after Vulkan branch integration and platform validation.
+The refreshed macOS and Windows 1.0 packages include Direct Shadow Catcher. The current Linux
+1.0 binary remains the earlier build from `ec87b62dbaa`; its package refresh will follow after
+Vulkan branch integration and platform validation.
