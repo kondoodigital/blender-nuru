@@ -1,0 +1,107 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Kondoo Digital GmbH -->
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuru UI Reference</title>
+  <link rel="stylesheet" href="nuru_docs.css">
+</head>
+<body>
+<main>
+  <section class="hero">
+    <p class="eyebrow">Nuru Documentation</p>
+    <h1>UI Reference</h1>
+    <p class="lede">This page explains the Nuru controls shown in Blender's <strong>Render Properties</strong>.</p>
+    <nav class="nav" aria-label="Documentation navigation">
+      <a href="../nuru_README.html">Home</a>
+      <a href="nuru_overview.html">Overview</a>
+      <a href="nuru_shadows_and_lights.html">Shadows And Lights</a>
+      <a href="nuru_materials.html">Materials</a>
+      <a href="nuru_dos_and_donts.html">Dos And Don'ts</a>
+      <a href="nuru_macos.html">macOS</a>
+      <a href="nuru_windows.html">Windows</a>
+      <a href="nuru_linux.html">Linux</a>
+    </nav>
+  </section>
+
+  <h2>Where To Find Nuru</h2>
+  <ol>
+    <li>Open <strong>Render Properties</strong>.</li>
+    <li>Set the render engine to <strong>Eevee</strong>.</li>
+    <li>Enable <strong>Raytracing</strong>.</li>
+    <li>Set <strong>Method</strong> to <strong>Nuru Raytracing</strong>.</li>
+  </ol>
+  <p>When the current device supports Nuru, the panel shows the Nuru logo, hardware support status, and <strong>Quick Settings</strong>.</p>
+
+  <h2>Raytracing</h2>
+  <table>
+    <tr><th>Control</th><th>What it does</th></tr>
+    <tr><td><strong>Raytracing</strong></td><td>Turns the Eevee ray tracing panel on or off.</td></tr>
+    <tr><td><strong>Method</strong></td><td>Choose <strong>Nuru Raytracing</strong> to use Nuru. Other methods use Blender's standard Eevee paths.</td></tr>
+    <tr><td><strong>Resolution</strong></td><td>Sets the trace resolution for Nuru work: 100%, 75%, 50%, or 25%. Lower values render faster with less detail. The scale applies to all traced effects, including reflections and refractions.</td></tr>
+  </table>
+
+  <h2>Global Illumination</h2>
+  <table>
+    <tr><th>Control</th><th>What it does</th></tr>
+    <tr><td><strong>Global Illumination</strong></td><td>Enables hardware-traced diffuse indirect light. Turn it off when you want classic Eevee behavior for indirect lighting.</td></tr>
+    <tr><td><strong>GI Spatial</strong></td><td>Controls spatial reuse for diffuse GI. Higher values can look smoother, but cost more time.</td></tr>
+  </table>
+
+  <h2>Reflections</h2>
+  <table>
+    <tr><th>Control</th><th>What it does</th></tr>
+    <tr><td><strong>Raytrace Reflections</strong></td><td>Enables Full RT reflections. Use it for mirrors, glossy surfaces, and reflective materials that need hardware ray tracing.</td></tr>
+    <tr><td><strong>Bounces</strong></td><td>Sets how many reflection events can continue. Higher values can show deeper mirror chains at higher cost.</td></tr>
+  </table>
+
+  <h2>Refractions</h2>
+  <table>
+    <tr><th>Control</th><th>What it does</th></tr>
+    <tr><td><strong>Raytrace Refractions</strong></td><td>Enables Full RT refractions and transmission. Use it for glass and transparent refractive materials.</td></tr>
+    <tr><td><strong>Bounces</strong></td><td>Sets how many refraction or transmission events can continue. Higher values can help layered glass, but cost more time.</td></tr>
+  </table>
+
+  <h2>Shadows</h2>
+  <table>
+    <tr><th>Control</th><th>What it does</th></tr>
+    <tr><td><strong>Raytrace Shadows</strong></td><td>Enables hardware ray-traced shadow visibility for lights.</td></tr>
+    <tr><td><strong>Samples</strong></td><td>Controls soft shadow quality. Higher values reduce noise and cost more time.</td></tr>
+    <tr><td><strong>Transparent Shadows</strong></td><td>Controls how much transparent materials affect shadow strength. At 0, shadows behave more opaque. At 1, transparency is fully considered.</td></tr>
+    <tr><td><strong>Color Transmission</strong></td><td>Controls how strongly transparent or tinted materials color their shadows. At 0, tint is reduced. At 1, tint is preserved.</td></tr>
+  </table>
+
+  <h2>Shadow Catcher</h2>
+  <p>Select a mesh receiver, open <strong>Object Properties - Visibility - Mask</strong>, and enable <strong>Shadow Catcher</strong>. Nuru hides the receiver surface and keeps only direct sun and local-light shadows in the Combined RGBA result. Unshadowed receiver pixels are transparent; soft, alpha-cutout, and glass-tinted shadows retain their partial opacity and visible tint.</p>
+  <p>The Nuru catcher is receiver-only. It does not cast shadows, appear in reflections or refractions, or contribute material shading, emission, ambient occlusion, caustics, or indirect light. Enable <strong>Film - Transparent</strong> for a transparent render intended for compositing.</p>
+  <p class="note">The refreshed macOS and Windows 1.0 packages include this control. The current Linux 1.0 download is an earlier build; its package refresh will follow after Vulkan branch integration and platform validation.</p>
+
+  <h2>Indirect Light</h2>
+  <table>
+    <tr><th>Control</th><th>What it does</th></tr>
+    <tr><td><strong>Indirect Light</strong></td><td>Adjusts the strength of indirect lighting in the scene.</td></tr>
+    <tr><td><strong>Indirect Clamp</strong></td><td>Limits very bright indirect lighting to reduce fireflies and unstable highlights.</td></tr>
+  </table>
+
+  <h2>Denoise</h2>
+  <table>
+    <tr><th>Control</th><th>What it does</th></tr>
+    <tr><td><strong>Denoiser</strong></td><td>Chooses the denoise engine: <strong>OpenImageDenoise</strong> (default) or <strong>OptiX Denoiser</strong> (NVIDIA GPUs). Both run in the same pipeline; OptiX falls back to OpenImageDenoise when unavailable.</td></tr>
+    <tr><td><strong>Passes</strong></td><td>Chooses which extra information the denoiser can use. More guidance can improve stability.</td></tr>
+    <tr><td><strong>Prefilter</strong></td><td>Sets how the denoiser prepares its inputs before denoising.</td></tr>
+    <tr><td><strong>Quality</strong></td><td>Balances denoising quality and performance.</td></tr>
+    <tr><td><strong>Denoise Sample Interval</strong></td><td>Controls how often denoising updates while samples accumulate.</td></tr>
+    <tr><td><strong>Use GPU</strong></td><td>Uses GPU acceleration for denoising when available.</td></tr>
+    <tr><td><strong>Spatial Reuse</strong></td><td>Reuses nearby image information to reduce noise.</td></tr>
+    <tr><td><strong>Temporal Accumulation</strong></td><td>Reuses information across samples over time for a steadier viewport.</td></tr>
+  </table>
+
+  <h2>Volumes</h2>
+  <p>The standard Eevee volume controls work with Nuru: object and world volumes, lit fog, and volume shadows render in viewport and final frames.</p>
+
+  <p class="footer">Markdown source: <a href="nuru_ui_reference.md">nuru_ui_reference.md</a></p>
+</main>
+</body>
+</html>

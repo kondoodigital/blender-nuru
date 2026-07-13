@@ -1,0 +1,82 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Kondoo Digital GmbH -->
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuru Shadows And Lights</title>
+  <link rel="stylesheet" href="nuru_docs.css">
+</head>
+<body>
+<main>
+  <section class="hero">
+    <p class="eyebrow">Nuru Documentation</p>
+    <h1>Shadows And Lights</h1>
+    <p class="lede">Nuru can use hardware ray tracing for light shadows. This helps shadows respond to scene geometry and transparent materials in the <strong>Rendered</strong> viewport and final render.</p>
+    <nav class="nav" aria-label="Documentation navigation">
+      <a href="../nuru_README.html">Home</a>
+      <a href="nuru_overview.html">Overview</a>
+      <a href="nuru_ui_reference.html">UI Reference</a>
+      <a href="nuru_materials.html">Materials</a>
+      <a href="nuru_dos_and_donts.html">Dos And Don'ts</a>
+      <a href="nuru_macos.html">macOS</a>
+      <a href="nuru_windows.html">Windows</a>
+      <a href="nuru_linux.html">Linux</a>
+    </nav>
+  </section>
+
+  <h2>Raytrace Shadows</h2>
+  <p>Enable <strong>Raytrace Shadows</strong> in <strong>Render Properties - Eevee - Raytracing - Method: Nuru Raytracing - Quick Settings</strong>.</p>
+  <p>When <strong>Raytrace Shadows</strong> is on, Nuru uses hardware ray tracing for shadow visibility. When it is off, Blender uses the available standard Eevee shadow behavior.</p>
+
+  <h2>Samples</h2>
+  <p><strong>Samples</strong> controls soft shadow quality.</p>
+  <table>
+    <tr><th>Lower values</th><th>Higher values</th></tr>
+    <tr><td>Faster, more likely to show noise.</td><td>Smoother, more expensive.</td></tr>
+  </table>
+  <p>Start with a low value while working, then raise it when checking the final look.</p>
+
+  <h2>Transparent Shadows</h2>
+  <p><strong>Transparent Shadows</strong> controls how much transparent material affects shadow strength.</p>
+  <table>
+    <tr><th>Value</th><th>Result</th></tr>
+    <tr><td>0</td><td>Transparent materials behave more like opaque blockers in shadows.</td></tr>
+    <tr><td>0.5</td><td>Transparency partly affects the shadow.</td></tr>
+    <tr><td>1</td><td>Transparency is fully considered.</td></tr>
+  </table>
+  <p>This is useful for glass, alpha surfaces, and tinted transparent materials.</p>
+
+  <h2>Color Transmission</h2>
+  <p><strong>Color Transmission</strong> controls how strongly transparent materials tint their shadows.</p>
+  <table>
+    <tr><th>Value</th><th>Result</th></tr>
+    <tr><td>0</td><td>Shadow tint is reduced.</td></tr>
+    <tr><td>1</td><td>The material color is preserved more strongly in the shadow.</td></tr>
+  </table>
+  <p>Use this when you want colored glass or transparent surfaces to cast colored light into the shadow.</p>
+  <p>Thin Glass materials are exempt from ray-traced shadows entirely: window panes pass light at full strength instead of casting a shadow.</p>
+
+  <h2>Shadow Catcher</h2>
+  <p>Enable <strong>Shadow Catcher</strong> under <strong>Object Properties - Visibility - Mask</strong> on a mesh that should receive compositing shadows. Nuru makes the mesh surface transparent and writes only direct shadows from sun and local lights into Combined RGBA.</p>
+  <p class="note">The refreshed macOS and Windows 1.0 packages include this feature. The current Linux 1.0 download is an earlier build; its package refresh will follow after Vulkan branch integration and platform validation.</p>
+  <ul>
+    <li>Areas without direct shadow are fully transparent.</li>
+    <li>Soft shadows and alpha-cutout blockers produce partial alpha.</li>
+    <li>Refractive and tinted blockers retain visible RGB shadow tint according to <strong>Transparent Shadows</strong> and <strong>Color Transmission</strong>.</li>
+    <li>The catcher does not cast shadows or contribute material color, emission, ambient occlusion, caustics, indirect light, reflections, or refractions.</li>
+  </ul>
+  <p>Enable <strong>Film - Transparent</strong> when exporting the catcher for compositing. Combined uses a premultiplied colored RGBA approximation that preserves the intended result over a white reference. A single alpha channel cannot reproduce independent red, green, and blue multiplication over every possible background, and this version does not add a separate RGB multiplication pass.</p>
+
+  <h2>Local Lights, Sun, And World Light</h2>
+  <p>Nuru is designed to work with local lights, sun lights, and world lighting. The visible result still depends on the light type, material setup, scene scale, and the enabled Quick Settings.</p>
+  <p>For best results, check shadows in <strong>Rendered</strong> viewport with the same feature settings you intend to render with.</p>
+
+  <h2>Volumes</h2>
+  <p>Volumetrics render in Nuru. Lit fog responds to lights and shadows, including sun shafts through windows and blinds.</p>
+
+  <p class="footer">Markdown source: <a href="nuru_shadows_and_lights.md">nuru_shadows_and_lights.md</a></p>
+</main>
+</body>
+</html>

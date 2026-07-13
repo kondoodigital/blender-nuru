@@ -1,0 +1,263 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Kondoo Digital GmbH -->
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuru - Hardware Ray Tracing for Blender Eevee</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #04070f;
+      --bg-deep: #02040a;
+      --panel: #0a1322;
+      --panel-2: #0e1a2e;
+      --panel-3: #122238;
+      --text: #eef4fc;
+      --muted: #9fb3d1;
+      --link: #5cb8ff;
+      --accent: #4da3ff;
+      --accent-2: #7ee0ff;
+      --border: #1c2c47;
+      --border-bright: #2c4a78;
+      --glow: rgba(77, 163, 255, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(ellipse 80rem 40rem at 50% -10rem, rgba(29, 78, 158, 0.35), transparent),
+        radial-gradient(circle at 12% 30rem, rgba(126, 224, 255, 0.06), transparent 28rem),
+        radial-gradient(circle at 88% 60rem, rgba(77, 163, 255, 0.07), transparent 32rem),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-deep) 100%);
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.62;
+    }
+    main {
+      width: min(1060px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 64px;
+    }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+      padding: 44px 26px 40px;
+      background:
+        radial-gradient(ellipse 50rem 24rem at 50% -8rem, rgba(77, 163, 255, 0.25), transparent),
+        linear-gradient(165deg, #0d1c33 0%, #081223 55%, #050b16 100%);
+      border: 1px solid var(--border-bright);
+      border-radius: 26px;
+      margin-bottom: 34px;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(126, 224, 255, 0.12);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -20% -65% -20%;
+      height: 80%;
+      background: radial-gradient(ellipse at center, var(--glow), transparent 70%);
+      opacity: 0.3;
+      pointer-events: none;
+    }
+    .hero img { width: min(512px, 100%); height: auto; filter: drop-shadow(0 0 34px rgba(77, 163, 255, 0.25)); }
+    .hero .tagline {
+      font-size: clamp(1.25rem, 2.6vw, 1.55rem);
+      margin: 16px 0 6px;
+      background: linear-gradient(120deg, #ffffff 25%, var(--accent-2) 70%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    h2 {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+      margin-top: 42px;
+      letter-spacing: -0.01em;
+    }
+    a { color: var(--link); text-decoration: none; }
+    a:hover { color: var(--accent-2); text-decoration: underline; }
+    .hero nav a, .hero p a {
+      display: inline-flex;
+      border: 1px solid var(--border-bright);
+      border-radius: 999px;
+      padding: 7px 14px;
+      margin: 3px 2px;
+      background: rgba(14, 26, 46, 0.85);
+      color: var(--text);
+      font-weight: 500;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .hero nav a:hover, .hero p a:hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 18px rgba(77, 163, 255, 0.25);
+      color: var(--accent-2);
+      text-decoration: none;
+    }
+    code {
+      background: #0c1830;
+      border: 1px solid var(--border);
+      color: var(--accent-2);
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-size: 0.92em;
+    }
+    pre {
+      background: #081120;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      overflow: auto;
+    }
+    pre code { background: transparent; border: none; color: var(--text); padding: 0; }
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin: 24px 0;
+      overflow: hidden;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+    }
+    th, td { padding: 13px 15px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    th {
+      background: linear-gradient(180deg, var(--panel-3), var(--panel-2));
+      color: var(--accent-2);
+      font-size: 0.86rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    td { background: rgba(10, 19, 34, 0.82); }
+    tr:nth-child(even) td { background: rgba(14, 26, 46, 0.6); }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+    .card { border: 1px solid var(--border); border-radius: 16px; padding: 18px; background: linear-gradient(155deg, var(--panel-2), var(--panel)); }
+    .note { color: var(--accent-2); background: #0a1626; border: 1px solid var(--border-bright); border-radius: 12px; padding: 14px 16px; }
+    .muted { color: var(--muted); }
+    .features {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      margin: 28px 0;
+    }
+    .feature {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 22px;
+      background: linear-gradient(155deg, var(--panel-2), var(--panel) 60%, #070e1a);
+      transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+    }
+    .feature::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 22px;
+      right: 22px;
+      height: 2px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2), transparent);
+      opacity: 0.65;
+    }
+    .feature:hover {
+      border-color: var(--border-bright);
+      box-shadow: 0 14px 44px rgba(0, 0, 0, 0.45), 0 0 24px rgba(77, 163, 255, 0.12);
+      transform: translateY(-2px);
+    }
+    .feature h3 { margin: 4px 0 10px; color: var(--accent-2); font-size: 1.06rem; }
+    .feature p { margin: 0; color: var(--muted); }
+    .lede { font-size: 1.08rem; color: var(--muted); max-width: 52em; }
+    .meaning { color: var(--accent-2); font-style: italic; margin: 8px 0 4px; }
+    .philosophy {
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin: 28px 0 10px;
+      background: linear-gradient(135deg, var(--panel-2) 0%, var(--panel) 100%);
+      font-size: 1.06rem;
+    }
+    .philosophy strong { color: var(--text); }
+    li::marker { color: var(--accent); }
+  </style>
+</head>
+<body>
+<main>
+  <section class="hero">
+    <img src="images/nuru_logo_512.png" alt="Nuru, hardware ray tracing for Blender Eevee by Kondoo Digital">
+    <p class="tagline"><strong>Hardware ray tracing for Blender Eevee, built for responsive real-time work.</strong></p>
+    <p class="meaning"><em>Nuru</em> means <strong>light</strong> in Swahili.</p>
+    <p class="muted">A Blender branch by <strong>Kondoo Digital GmbH</strong>.</p>
+    <p>
+      <a href="https://github.com/kondoodigital/blender-nuru"><strong>Downloads on GitHub</strong></a> |
+      <a href="docs/nuru_overview.html">Overview</a> |
+      <a href="docs/nuru_ui_reference.html">UI Reference</a> |
+      <a href="docs/nuru_shadows_and_lights.html">Shadows And Lights</a> |
+      <a href="docs/nuru_materials.html">Materials</a> |
+      <a href="docs/nuru_dos_and_donts.html">Dos And Don'ts</a> |
+      <a href="docs/nuru_windows.html">Windows</a> |
+      <a href="docs/nuru_macos.html">macOS</a> |
+      <a href="docs/nuru_linux.html">Linux</a>
+    </p>
+  </section>
+
+  <p class="muted">Downloads are on the <a href="https://github.com/kondoodigital/blender-nuru">GitHub repository page</a>. Requirements and first-start notes (SmartScreen, Gatekeeper, Linux install) are on the <a href="docs/nuru_windows.html">Windows</a>, <a href="docs/nuru_macos.html">macOS</a>, and <a href="docs/nuru_linux.html">Linux</a> pages.</p>
+  <p class="note">The refreshed macOS and Windows 1.0 packages include Direct Shadow Catcher. The current Linux 1.0 download is an earlier build; its package refresh will follow after Vulkan branch integration and platform validation.</p>
+
+  <h2 id="what-nuru-is">What Nuru Is</h2>
+  <p><strong>Nuru</strong> adds a <strong>Nuru Raytracing</strong> method to Blender Eevee. It lets artists choose which parts of the render use hardware ray tracing: global illumination, shadows, reflections, and refractions.</p>
+  <p>Nuru is a hybrid real-time renderer. It is designed for interactive viewport feedback in Eevee, not as a replacement for Cycles.</p>
+  <p>The workflow, supported hardware, control summary, branch model, and current limits live on the <a href="docs/nuru_overview.html">Overview</a> page; every visible control is described in the <a href="docs/nuru_ui_reference.html">UI Reference</a>.</p>
+
+  <h2 id="why-use-nuru">Why Use Nuru</h2>
+  <p>Nuru is strongest when you need fast, stable images while working or rendering animation.</p>
+  <div class="features">
+    <article class="feature">
+      <h3>High-resolution output</h3>
+      <p>At 4K and above, Nuru can keep expensive RT work at a lower internal Resolution while still producing a high-resolution final image. The Resolution setting applies to every traced effect, including reflections and refractions.</p>
+    </article>
+    <article class="feature">
+      <h3>Direct Shadow Catcher</h3>
+      <p>Make a mesh receiver transparent while keeping soft, alpha-cutout, and tinted direct shadows in Combined RGBA for compositing.</p>
+    </article>
+    <article class="feature">
+      <h3>True materials in reflections</h3>
+      <p>Mirrors and refractive surfaces show the real material of what they reflect: image textures, UV maps, and mixed shader setups stay intact in the reflection.</p>
+    </article>
+    <article class="feature">
+      <h3>Volumetrics</h3>
+      <p>Object and world volumes render in viewport and final frames, including lit fog and sun shafts through windows.</p>
+    </article>
+    <article class="feature">
+      <h3>Animation stability</h3>
+      <p>Integrated denoising and temporal accumulation help reduce frame-to-frame noise shimmer that can appear in low-sample path-traced animation.</p>
+    </article>
+    <article class="feature">
+      <h3>Fast repeated frames</h3>
+      <p>After the first warm-up, animation frames can progress quickly because Nuru traces selected effects instead of path tracing every light path from scratch.</p>
+    </article>
+    <article class="feature">
+      <h3>Viewport-to-final consistency</h3>
+      <p>The Rendered viewport and final render use the same Nuru lighting path, so lighting and material decisions carry over reliably.</p>
+    </article>
+  </div>
+
+  <h2>Upstream Blender Links</h2>
+  <ul>
+    <li><a href="https://www.blender.org">Blender Website</a></li>
+    <li><a href="https://docs.blender.org/manual/en/latest/index.html">Blender Manual</a></li>
+    <li><a href="https://developer.blender.org/docs/">Blender Developer Documentation</a></li>
+  </ul>
+
+  <h2>License</h2>
+  <p>Nuru documentation and Kondoo Digital additions are provided under Blender's GPL license.</p>
+  <p class="muted">Blender as a whole is licensed under the GNU General Public License. See <a href="https://www.blender.org/about/license">blender.org/about/license</a> for details.</p>
+</main>
+</body>
+</html>

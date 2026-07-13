@@ -1,0 +1,82 @@
+# Nuru Shadows And Lights
+
+Nuru can use hardware ray tracing for light shadows. This helps shadows respond to scene geometry and transparent materials in the **Rendered** viewport and final render.
+
+## Raytrace Shadows
+
+Enable **Raytrace Shadows** in **Render Properties → Eevee → Raytracing → Method: Nuru Raytracing → Quick Settings**.
+
+When **Raytrace Shadows** is on, Nuru uses hardware ray tracing for shadow visibility. When it is off, Blender uses the available standard Eevee shadow behavior.
+
+## Samples
+
+**Samples** controls soft shadow quality.
+
+| Lower values | Higher values |
+| --- | --- |
+| Faster, more likely to show noise. | Smoother, more expensive. |
+
+Start with a low value while working, then raise it when checking the final look.
+
+## Transparent Shadows
+
+**Transparent Shadows** controls how much transparent material affects shadow strength.
+
+| Value | Result |
+| --- | --- |
+| 0 | Transparent materials behave more like opaque blockers in shadows. |
+| 0.5 | Transparency partly affects the shadow. |
+| 1 | Transparency is fully considered. |
+
+This is useful for glass, alpha surfaces, and tinted transparent materials.
+
+## Color Transmission
+
+**Color Transmission** controls how strongly transparent materials tint their shadows.
+
+| Value | Result |
+| --- | --- |
+| 0 | Shadow tint is reduced. |
+| 1 | The material color is preserved more strongly in the shadow. |
+
+Use this when you want colored glass or transparent surfaces to cast colored light into the shadow.
+
+Thin Glass materials are exempt from ray-traced shadows entirely: window panes pass light at full strength instead of casting a shadow.
+
+## Shadow Catcher
+
+Enable **Shadow Catcher** under **Object Properties → Visibility → Mask** on a mesh that should
+receive compositing shadows. Nuru makes the mesh surface transparent and writes only direct shadows
+from sun and local lights into Combined RGBA.
+
+The refreshed macOS and Windows 1.0 packages include this feature. The current Linux 1.0 download
+is an earlier build; its package refresh will follow after Vulkan branch integration and platform
+validation.
+
+- Areas without direct shadow are fully transparent.
+- Soft shadows and alpha-cutout blockers produce partial alpha.
+- Refractive and tinted blockers retain visible RGB shadow tint according to **Transparent
+  Shadows** and **Color Transmission**.
+- The catcher does not cast shadows or contribute material color, emission, ambient occlusion,
+  caustics, indirect light, reflections, or refractions.
+
+Enable **Film → Transparent** when exporting the catcher for compositing. Combined uses a
+premultiplied colored RGBA approximation that preserves the intended result over a white reference.
+A single alpha channel cannot reproduce independent red, green, and blue multiplication over every
+possible background, and this version does not add a separate RGB multiplication pass.
+
+## Local Lights, Sun, And World Light
+
+Nuru is designed to work with local lights, sun lights, and world lighting. The visible result still depends on the light type, material setup, scene scale, and the enabled Quick Settings.
+
+For best results, check shadows in **Rendered** viewport with the same feature settings you intend to render with.
+
+## Volumes
+
+Volumetrics render in Nuru. Lit fog responds to lights and shadows, including sun shafts through windows and blinds.
+
+## Related Pages
+
+- [UI Reference](nuru_ui_reference.html)
+- [Nuru Overview](nuru_overview.html)
+- [Materials](nuru_materials.html)
