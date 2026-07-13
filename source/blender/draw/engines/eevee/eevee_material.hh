@@ -252,6 +252,7 @@ struct MaterialKey {
     options = (options << 1) | (visibility_flags & OB_HIDE_SHADOW ? 0 : 1);
     options = (options << 1) | (visibility_flags & OB_HIDE_PROBE_CUBEMAP ? 0 : 1);
     options = (options << 1) | (visibility_flags & OB_HIDE_PROBE_PLANAR ? 0 : 1);
+    options = (options << 1) | (visibility_flags & OB_SHADOW_CATCHER ? 1 : 0);
   }
 
   uint64_t hash() const
@@ -375,12 +376,16 @@ class MaterialModule {
   /**
    * Returned Material references are valid until the next call to this function or material_get().
    */
-  MaterialArray &material_array_get(Object *ob, bool has_motion);
+  MaterialArray &material_array_get(Object *ob, bool has_motion, bool is_shadow_catcher = false);
   /**
    * Returned Material references are valid until the next call to this function or
    * material_array_get().
    */
-  Material &material_get(Object *ob, bool has_motion, int mat_nr, eMaterialGeometry geometry_type);
+  Material &material_get(Object *ob,
+                         bool has_motion,
+                         int mat_nr,
+                         eMaterialGeometry geometry_type,
+                         bool is_shadow_catcher = false);
 
   /* Request default materials and return DEFAULT_MATERIALS if they are compiled. */
   ShaderGroups default_materials_load_async()
@@ -396,7 +401,8 @@ class MaterialModule {
   Material &material_sync(Object *ob,
                           blender::Material *blender_mat,
                           eMaterialGeometry geometry_type,
-                          bool has_motion);
+                          bool has_motion,
+                          bool is_shadow_catcher_override = false);
 
   /** Return correct material or empty default material if slot is empty. */
   blender::Material *material_from_slot(Object *ob, int slot);

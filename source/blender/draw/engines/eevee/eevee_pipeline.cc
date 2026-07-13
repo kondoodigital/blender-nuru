@@ -963,7 +963,7 @@ void DeferredLayer::end_sync(bool is_first_pass,
       pass.specialize_constant(sh, "render_pass_position_enabled", rbuf_data.position_id != -1);
       pass.shader_set(sh);
       /* Use stencil test to reject pixels not written by this layer. */
-      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_ADD_FULL | DRW_STATE_STENCIL_NEQUAL);
+      pass.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM | DRW_STATE_STENCIL_NEQUAL);
       /* Render where stencil is not 0. */
       pass.state_stencil(0x0u, 0x0u, uint8_t(StencilBits::HEADER_BITS));
       pass.bind_texture("direct_radiance_1_tx", &direct_radiance_txs_[0]);

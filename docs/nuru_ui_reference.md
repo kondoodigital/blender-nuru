@@ -9,7 +9,7 @@ This page explains the Nuru controls shown in Blender's **Render Properties**.
 3. Enable **Raytracing**.
 4. Set **Method** to **Nuru Raytracing**.
 
-When the current Mac supports Nuru, the panel shows the Nuru logo, hardware support status, and **Quick Settings**.
+When the current device supports Nuru, the panel shows the Nuru logo, hardware support status, and **Quick Settings**.
 
 ## Raytracing
 
@@ -48,6 +48,21 @@ When the current Mac supports Nuru, the panel shows the Nuru logo, hardware supp
 | **Samples** | Controls soft shadow quality. Higher values reduce noise and cost more time. |
 | **Transparent Shadows** | Controls how much transparent materials affect shadow strength. At 0, shadows behave more opaque. At 1, transparency is fully considered. |
 | **Color Transmission** | Controls how strongly transparent or tinted materials color their shadows. At 0, tint is reduced. At 1, tint is preserved. |
+
+## Shadow Catcher
+
+Select a mesh receiver, open **Object Properties → Visibility → Mask**, and enable
+**Shadow Catcher**. Nuru hides the receiver surface and keeps only direct sun and local-light
+shadows in the Combined RGBA result. Unshadowed receiver pixels are transparent; soft,
+alpha-cutout, and glass-tinted shadows retain their partial opacity and visible tint.
+
+The Nuru catcher is receiver-only. It does not cast shadows, appear in reflections or
+refractions, or contribute material shading, emission, ambient occlusion, caustics, or indirect
+light. Enable **Film → Transparent** for a transparent render intended for compositing.
+
+The refreshed macOS 1.0 package includes this control. The current Windows and Linux 1.0 downloads
+are earlier builds; their package refreshes will follow after Vulkan branch integration and
+platform validation.
 
 ## Indirect Light
 

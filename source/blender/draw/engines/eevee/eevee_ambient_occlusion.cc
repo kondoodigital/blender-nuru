@@ -76,6 +76,7 @@ void AmbientOcclusion::sync()
   render_pass_ps_.bind_resources(inst_.uniform_data);
   render_pass_ps_.bind_resources(inst_.sampling);
   render_pass_ps_.bind_resources(inst_.hiz_buffer.front);
+  render_pass_ps_.bind_resources(inst_.gbuffer);
 
   render_pass_ps_.bind_texture("dummy_tx", &dummy_tx_);
   render_pass_ps_.bind_image("in_normal_img", &inst_.render_buffers.rp_color_tx);

@@ -43,6 +43,28 @@ Use this when you want colored glass or transparent surfaces to cast colored lig
 
 Thin Glass materials are exempt from ray-traced shadows entirely: window panes pass light at full strength instead of casting a shadow.
 
+## Shadow Catcher
+
+Enable **Shadow Catcher** under **Object Properties → Visibility → Mask** on a mesh that should
+receive compositing shadows. Nuru makes the mesh surface transparent and writes only direct shadows
+from sun and local lights into Combined RGBA.
+
+The refreshed macOS 1.0 package includes this feature. The current Windows and Linux 1.0 downloads
+are earlier builds; their package refreshes will follow after Vulkan branch integration and
+platform validation.
+
+- Areas without direct shadow are fully transparent.
+- Soft shadows and alpha-cutout blockers produce partial alpha.
+- Refractive and tinted blockers retain visible RGB shadow tint according to **Transparent
+  Shadows** and **Color Transmission**.
+- The catcher does not cast shadows or contribute material color, emission, ambient occlusion,
+  caustics, indirect light, reflections, or refractions.
+
+Enable **Film → Transparent** when exporting the catcher for compositing. Combined uses a
+premultiplied colored RGBA approximation that preserves the intended result over a white reference.
+A single alpha channel cannot reproduce independent red, green, and blue multiplication over every
+possible background, and this version does not add a separate RGB multiplication pass.
+
 ## Local Lights, Sun, And World Light
 
 Nuru is designed to work with local lights, sun lights, and world lighting. The visible result still depends on the light type, material setup, scene scale, and the enabled Quick Settings.

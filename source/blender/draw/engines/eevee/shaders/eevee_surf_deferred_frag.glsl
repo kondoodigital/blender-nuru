@@ -86,6 +86,8 @@ void main()
 
   /* Object holdout. */
   eObjectInfoFlag ob_flag = drw_object_infos().flag;
+  const bool is_shadow_catcher = flag_test(ob_flag, OBJECT_SHADOW_CATCHER) &&
+                                 !flag_test(ob_flag, OBJECT_HOLDOUT);
   if (flag_test(ob_flag, OBJECT_HOLDOUT)) {
     /* alpha is set from rejected pixels / dithering. */
     g_holdout = 1.0f;
@@ -112,12 +114,14 @@ void main()
 
 #ifdef MAT_RENDER_PASS_SUPPORT /* Needed because node_tree isn't present in test shaders. */
   /* Some render pass can be written during the gbuffer pass. Light passes are written later. */
-  if (imageSize(rp_cryptomatte_img).x > 1) {
-    float4 cryptomatte_output = float4(
-        cryptomatte_object_buf[drw_resource_id()], node_tree.crypto_hash, 0.0f);
-    imageStoreFast(rp_cryptomatte_img, out_texel, cryptomatte_output);
+  if (!is_shadow_catcher) {
+    if (imageSize(rp_cryptomatte_img).x > 1) {
+      float4 cryptomatte_output = float4(
+          cryptomatte_object_buf[drw_resource_id()], node_tree.crypto_hash, 0.0f);
+      imageStoreFast(rp_cryptomatte_img, out_texel, cryptomatte_output);
+    }
+    output_renderpass_color(uniform_buf.render_pass.emission_id, float4(g_emission, 1.0f));
   }
-  output_renderpass_color(uniform_buf.render_pass.emission_id, float4(g_emission, 1.0f));
 #endif
 
   /* ----- GBuffer output ----- */
@@ -130,16 +134,36 @@ void main()
 #if CLOSURE_BIN_COUNT > 2
   gbuf_data.closure[2] = g_closure_get_resolved(2, alpha_rcp);
 #endif
+  if (is_shadow_catcher) {
+    for (int i = 0; i < GBUFFER_LAYER_MAX; i++) {
+      gbuf_data.closure[i] = closure_new(CLOSURE_NONE_ID);
+      gbuf_data.closure[i].weight = 0.0f;
+      gbuf_data.closure[i].color = float3(0.0f);
+      gbuf_data.closure[i].N = g_data.N;
+      gbuf_data.closure[i].data = float4(0.0f);
+    }
+    gbuf_data.closure[0] = closure_new(CLOSURE_BSDF_DIFFUSE_ID);
+    gbuf_data.closure[0].weight = 1.0f;
+    gbuf_data.closure[0].color = float3(1.0f);
+    gbuf_data.closure[0].N = g_data.N;
+    gbuf_data.closure[0].data = float4(0.0f);
+  }
   const bool use_object_id = use_sss || use_light_linking || use_terminator_offset;
 
   const bool is_thin_glass =
 #ifdef MAT_THIN_GLASS
-      true;
+      !is_shadow_catcher;
 #else
       false;
 #endif
   gbuffer::Packed gbuf = gbuffer::pack(
-      gbuf_data, g_data.Ng, g_data.N, thickness, use_object_id, is_thin_glass);
+      gbuf_data,
+      g_data.Ng,
+      g_data.N,
+      thickness,
+      use_object_id,
+      is_thin_glass,
+      is_shadow_catcher);
 
   /* Output header and first closure using frame-buffer attachment. */
   out_gbuf_header = gbuf.header;
@@ -191,7 +215,14 @@ void main()
   /* ----- Radiance output ----- */
 
   /* Only output emission during the gbuffer pass. */
-  out_radiance = float4(g_emission, 0.0f);
-  out_radiance.rgb *= 1.0f - g_holdout;
-  out_radiance.a = g_holdout;
+  if (is_shadow_catcher) {
+    /* Combined stores transmittance in alpha. Start catchers fully transparent; deferred combine
+     * replaces this pixel with the direct-shadow matte. */
+    out_radiance = float4(0.0f, 0.0f, 0.0f, 1.0f);
+  }
+  else {
+    out_radiance = float4(g_emission, 0.0f);
+    out_radiance.rgb *= 1.0f - g_holdout;
+    out_radiance.a = g_holdout;
+  }
 }

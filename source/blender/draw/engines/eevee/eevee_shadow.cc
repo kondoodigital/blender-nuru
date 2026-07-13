@@ -770,6 +770,12 @@ void ShadowModule::sync_object(const Object *ob,
                                bool is_alpha_blend,
                                bool has_transparent_shadows)
 {
+  const bool is_holdout = (ob->base_flag & BASE_HOLDOUT) ||
+                          (ob->visibility_flag & OB_HOLDOUT);
+  if (!is_holdout && (ob->visibility_flag & OB_SHADOW_CATCHER)) {
+    return;
+  }
+
   bool is_shadow_caster = !(ob->visibility_flag & OB_HIDE_SHADOW);
   if (!is_shadow_caster && !is_alpha_blend) {
     return;

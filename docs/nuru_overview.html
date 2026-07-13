@@ -56,6 +56,7 @@
     <tr><td><code>linux-vulkan</code></td><td>Linux Vulkan implementation branch, based on the shared core.</td></tr>
   </table>
   <p>Packaged builds are available for macOS (Metal), Windows (Vulkan, NVIDIA RTX), and Linux (Vulkan, NVIDIA RTX). All three inherit the same shared Nuru UI and renderer behavior from <code>nuru-core</code>.</p>
+  <p class="note">The refreshed macOS 1.0 package includes <strong>Direct Shadow Catcher</strong>. The current Windows and Linux 1.0 downloads are earlier builds; their package refreshes will follow after Vulkan branch integration and platform validation.</p>
 
   <h2>Advantages</h2>
   <p>Nuru is designed for scenes where speed, interactivity, and animation stability matter.</p>
@@ -63,6 +64,10 @@
     <article class="card">
       <h3>High-resolution rendering</h3>
       <p>For 4K and larger output, Nuru can use reduced internal RT resolution while preserving the final image size. The <strong>Resolution</strong> setting applies to every traced effect, including reflections and refractions.</p>
+    </article>
+    <article class="card">
+      <h3>Direct Shadow Catcher</h3>
+      <p>Mark a mesh as a receiver-only compositing matte. Its surface disappears while direct sun and local-light shadows remain in transparent Combined RGBA, including soft, alpha-cutout, and tinted-glass attenuation.</p>
     </article>
     <article class="card">
       <h3>True materials in reflections</h3>

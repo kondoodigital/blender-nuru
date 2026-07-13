@@ -36,6 +36,10 @@ Nuru source is organized so shared behavior and platform-specific backend work d
 
 Packaged builds are available for macOS (Metal), Windows (Vulkan, NVIDIA RTX), and Linux (Vulkan, NVIDIA RTX). All three inherit the same shared Nuru UI and renderer behavior from `nuru-core`.
 
+The refreshed macOS 1.0 package includes **Direct Shadow Catcher**. The current Windows and Linux
+1.0 downloads are earlier builds; their package refreshes will follow after Vulkan branch
+integration and platform validation.
+
 ## Advantages
 
 Nuru is designed for scenes where speed, interactivity, and animation stability matter.
@@ -43,6 +47,7 @@ Nuru is designed for scenes where speed, interactivity, and animation stability 
 | Advantage | What it means for users |
 | --- | --- |
 | High-resolution rendering | For 4K and larger output, Nuru can use reduced internal RT resolution while preserving the final image size. The **Resolution** setting applies to every traced effect, including reflections and refractions. |
+| Direct Shadow Catcher | Mark a mesh as a receiver-only compositing matte. Its surface disappears while direct sun and local-light shadows remain in transparent Combined RGBA, including soft, alpha-cutout, and tinted-glass attenuation. |
 | True materials in reflections | Mirrors and refractive surfaces show the real material of what they reflect: image textures, UV maps, and mixed shader setups stay intact in the reflection. |
 | Stable animation frames | Denoising and temporal accumulation can reduce frame-to-frame shimmer compared with low-sample path-traced animation. |
 | Fast warmed-up playback and rendering | After the first warm-up, repeated frames can progress quickly because Nuru traces selected effects instead of every possible light path. |

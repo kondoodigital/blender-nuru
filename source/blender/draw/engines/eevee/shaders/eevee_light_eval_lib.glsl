@@ -269,6 +269,35 @@ void light_eval_transmission(ClosureLightStack &stack,
 #endif
 }
 
+void light_eval_reflection_local(ClosureLightStack &stack,
+                                 float3 P,
+                                 float3 Ng,
+                                 float3 V,
+                                 float vPz,
+                                 uchar receiver_light_set,
+                                 float terminator_normal_offset,
+                                 float terminator_geometry_offset)
+{
+#ifdef SKIP_LIGHT_EVAL
+  return;
+#endif
+
+  LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, PIXEL, vPz, l_idx) {
+    light_eval_single(l_idx,
+                      false,
+                      false,
+                      stack,
+                      P,
+                      Ng,
+                      V,
+                      0.0f,
+                      receiver_light_set,
+                      terminator_normal_offset,
+                      terminator_geometry_offset);
+  }
+  LIGHT_FOREACH_END
+}
+
 void light_eval_reflection(ClosureLightStack &stack,
                            float3 P,
                            float3 Ng,
@@ -300,20 +329,14 @@ void light_eval_reflection(ClosureLightStack &stack,
 #ifdef use_hardware_direct_light
   if (!use_hardware_direct_light) {
 #endif
-    LIGHT_FOREACH_BEGIN_LOCAL (light_cull_buf, light_zbin_buf, light_tile_buf, PIXEL, vPz, l_idx) {
-      light_eval_single(l_idx,
-                        false,
-                        false,
-                        stack,
-                        P,
-                        Ng,
-                        V,
-                        0.0f,
-                        receiver_light_set,
-                        terminator_normal_offset,
-                        terminator_geometry_offset);
-    }
-    LIGHT_FOREACH_END
+    light_eval_reflection_local(stack,
+                                P,
+                                Ng,
+                                V,
+                                vPz,
+                                receiver_light_set,
+                                terminator_normal_offset,
+                                terminator_geometry_offset);
 #ifdef use_hardware_direct_light
   }
 #endif

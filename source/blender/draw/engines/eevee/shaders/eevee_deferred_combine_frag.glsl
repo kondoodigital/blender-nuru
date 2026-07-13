@@ -74,6 +74,19 @@ void main()
   const gbuffer::Layers gbuf = gbuffer::read_layers(texel);
   const uchar closure_count = gbuf.header.closure_len();
   const uint3 bin_indices = gbuf.header.bin_index_per_layer();
+  out_combined_mul = float4(1.0f);
+
+  if (gbuf.header.is_shadow_catcher()) {
+    const float3 shadow_factor = saturate(load_radiance_direct(texel, bin_indices[0]));
+    const float transmittance = min(shadow_factor.x, min(shadow_factor.y, shadow_factor.z));
+    /* A single alpha channel cannot reproduce channel-wise multiplication over arbitrary footage.
+     * This premultiplied encoding is exact over white while retaining partial opacity and visible
+     * tint in Combined. */
+    out_combined_add = float4(shadow_factor - float3(transmittance), transmittance);
+    out_combined_mul = float4(0.0f);
+    return;
+  }
+
   float depth = reverse_z::read(texelFetch(depth_tx, texel, 0).r);
 
   float3 diffuse_color = float3(0.0f);
@@ -218,18 +231,20 @@ void main()
     output_renderpass_color(uniform_buf.render_pass.position_id, float4(P, 1.0f));
   }
 
-  out_combined = float4(out_direct + out_indirect, 0.0f);
+  out_combined_add = float4(out_direct + out_indirect, 0.0f);
   switch (uniform_buf.raytrace.hardware_debug_view_mode) {
     case HWRT_DEBUG_VIEW_DIRECT_LIGHT: {
       float sample_density = float(uniform_buf.raytrace.hardware_direct_light.light_samples_per_shading_point) /
                              6.0f;
-      out_combined = float4(sample_density, saturate(length(hardware_direct_light)), 0.0f, 0.0f);
+      out_combined_add = float4(
+          sample_density, saturate(length(hardware_direct_light)), 0.0f, 0.0f);
       break;
     }
     case HWRT_DEBUG_VIEW_NONE:
     default:
       break;
   }
-  out_combined = any(isnan(out_combined)) ? float4(1.0f, 0.0f, 1.0f, 0.0f) : out_combined;
-  out_combined = colorspace_safe_color(out_combined);
+  out_combined_add = any(isnan(out_combined_add)) ? float4(1.0f, 0.0f, 1.0f, 0.0f) :
+                                                   out_combined_add;
+  out_combined_add = colorspace_safe_color(out_combined_add);
 }

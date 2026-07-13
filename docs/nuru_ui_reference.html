@@ -33,7 +33,7 @@
     <li>Enable <strong>Raytracing</strong>.</li>
     <li>Set <strong>Method</strong> to <strong>Nuru Raytracing</strong>.</li>
   </ol>
-  <p>When the current Mac supports Nuru, the panel shows the Nuru logo, hardware support status, and <strong>Quick Settings</strong>.</p>
+  <p>When the current device supports Nuru, the panel shows the Nuru logo, hardware support status, and <strong>Quick Settings</strong>.</p>
 
   <h2>Raytracing</h2>
   <table>
@@ -72,6 +72,11 @@
     <tr><td><strong>Transparent Shadows</strong></td><td>Controls how much transparent materials affect shadow strength. At 0, shadows behave more opaque. At 1, transparency is fully considered.</td></tr>
     <tr><td><strong>Color Transmission</strong></td><td>Controls how strongly transparent or tinted materials color their shadows. At 0, tint is reduced. At 1, tint is preserved.</td></tr>
   </table>
+
+  <h2>Shadow Catcher</h2>
+  <p>Select a mesh receiver, open <strong>Object Properties - Visibility - Mask</strong>, and enable <strong>Shadow Catcher</strong>. Nuru hides the receiver surface and keeps only direct sun and local-light shadows in the Combined RGBA result. Unshadowed receiver pixels are transparent; soft, alpha-cutout, and glass-tinted shadows retain their partial opacity and visible tint.</p>
+  <p>The Nuru catcher is receiver-only. It does not cast shadows, appear in reflections or refractions, or contribute material shading, emission, ambient occlusion, caustics, or indirect light. Enable <strong>Film - Transparent</strong> for a transparent render intended for compositing.</p>
+  <p class="note">The refreshed macOS 1.0 package includes this control. The current Windows and Linux 1.0 downloads are earlier builds; their package refreshes will follow after Vulkan branch integration and platform validation.</p>
 
   <h2>Indirect Light</h2>
   <table>

@@ -63,6 +63,7 @@ void main()
   const gbuffer::Layers gbuf = gbuffer::read_layers(texel);
   const float thickness = gbuffer::read_thickness(gbuf.header, texel);
   const uchar closure_count = gbuf.header.closure_len();
+  const bool is_shadow_catcher = gbuf.header.is_shadow_catcher();
 
   const float3 P = drw_point_screen_to_world(float3(screen_uv, depth));
   const float3 Ng = gbuf.header.geometry_normal(gbuf.surface_N());
@@ -93,6 +94,13 @@ void main()
   /* TODO(fclem): If transmission (no SSS) is present, we could reduce LIGHT_CLOSURE_EVAL_COUNT
    * by 1 for this evaluation and skip evaluating the transmission closure twice. */
   light_eval_reflection(stack, P, Ng, V, vPz, receiver_light_set, normal_offset, geometry_offset);
+  if (is_shadow_catcher && use_hardware_direct_light) {
+    /* The sampled viewport direct-light path only retains shadowed radiance. Catchers need the
+     * matching unshadowed reference, so evaluate local lights through the existing RGB HW shadow
+     * atlas and ignore the sampled direct-light texture during combine. */
+    light_eval_reflection_local(
+        stack, P, Ng, V, vPz, receiver_light_set, normal_offset, geometry_offset);
+  }
 
   if (use_transmission) {
     ClosureUndetermined cl_transmit = gbuf.layer[0];
@@ -122,7 +130,7 @@ void main()
 #endif
   }
 
-  if (render_pass_shadow_id != -1) {
+  if (!is_shadow_catcher && render_pass_shadow_id != -1) {
     float3 radiance_shadowed = float3(0);
     float3 radiance_unshadowed = float3(0);
     for (uchar i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < closure_count; i++) {
@@ -131,6 +139,18 @@ void main()
     }
     float3 shadows = radiance_shadowed * safe_rcp(radiance_unshadowed);
     output_renderpass_value(render_pass_shadow_id, average(shadows));
+  }
+
+  if (is_shadow_catcher) {
+    const ClosureLight catcher_light = closure_light_get(stack, 0);
+    const float3 denominator = catcher_light.light_unshadowed;
+    const float3 ratio = catcher_light.light_shadowed * safe_rcp(denominator);
+    const bool3 has_reference = greaterThan(abs(denominator), float3(1.0e-8f));
+    const float3 shadow_factor = mix(float3(1.0f), saturate(ratio), has_reference);
+    /* Store-bound proof: this fragment pass is rasterized over the render extent and each direct
+     * radiance texture is host-allocated to that same extent before it is attached to the pass. */
+    write_radiance_direct(gbuf.header.bin_index_per_layer()[0], texel, shadow_factor);
+    return;
   }
 
   if (use_lightprobe_eval) {

@@ -41,6 +41,9 @@ void main()
   }
 
   const gbuffer::Layers gbuf = gbuffer::read_layers(texel);
+  if (gbuf.header.is_shadow_catcher()) {
+    return;
+  }
   const uchar closure_count = gbuf.header.closure_len();
   const uint3 bin_indices = gbuf.header.bin_index_per_layer();
 
@@ -175,6 +178,19 @@ void main()
   constexpr uint tile_size = RAYTRACE_GROUP_SIZE;
   uint2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
   int2 texel = int2(gl_LocalInvocationID.xy + tile_coord * tile_size);
+  /* Store-bound proof: the host allocates out_ray_data_img to
+   * ceil(full_resolution * denominator / scale). Compacted edge tiles still dispatch a complete
+   * workgroup, so reject lanes outside that exact host-pushed extent before the existing zero/data
+   * stores below. */
+  const int resolution_scale = max(uniform_buf.raytrace.resolution_scale, 1);
+  const int2 tracing_extent =
+      (uniform_buf.raytrace.full_resolution *
+           uniform_buf.raytrace.resolution_scale_denominator +
+       int2(resolution_scale - 1)) /
+      resolution_scale;
+  if (any(greaterThanEqual(texel, tracing_extent))) {
+    return;
+  }
 
   int2 texel_fullres = raytrace_texel_to_fullres(texel,
                                                  uniform_buf.raytrace.resolution_scale,
@@ -190,6 +206,9 @@ void main()
 
   gbuffer::Header gbuf_header = gbuffer::read_header(texel_fullres);
   ClosureUndetermined closure = gbuffer::read_bin(texel_fullres, closure_index);
+  if (gbuf_header.is_shadow_catcher()) {
+    closure.type = CLOSURE_NONE_ID;
+  }
 
   if (closure.type == CLOSURE_NONE_ID) {
     imageStore(out_ray_data_img, texel, float4(0.0f));

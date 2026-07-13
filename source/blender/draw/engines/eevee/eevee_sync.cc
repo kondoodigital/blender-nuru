@@ -1114,8 +1114,11 @@ void SyncModule::sync_mesh(Object *ob, ObjectHandle &ob_handle, const ObjectRef 
   bool has_motion = inst_.velocity.step_object_sync(
       ob_handle.object_key, ob_ref, ob_handle.recalc, res_handle);
 
-  MaterialArray &material_array = inst_.materials.material_array_get(ob, has_motion);
-  const bool capture_hardware_scene = use_hardware_raytrace_scene_capture(inst_);
+  const bool is_shadow_catcher = ob_ref.is_shadow_catcher();
+  MaterialArray &material_array = inst_.materials.material_array_get(
+      ob, has_motion, is_shadow_catcher);
+  const bool capture_hardware_scene = use_hardware_raytrace_scene_capture(inst_) &&
+                                      !is_shadow_catcher;
   const Vector<const GPUMaterial *> hit_eval_gpu_materials = capture_hardware_scene ?
                                                                  material_array_hit_eval_gpu_materials(
                                                                      material_array) :
@@ -1237,7 +1240,10 @@ void SyncModule::sync_mesh(Object *ob, ObjectHandle &ob_handle, const ObjectRef 
                                            capture_hardware_scene ? replay_attribute_materials.as_span() :
                                                                     material_array.gpu_materials.as_span());
 
-  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend, has_transparent_shadows);
+  if (!is_shadow_catcher) {
+    inst_.shadows.sync_object(
+        ob, ob_handle, res_handle, is_alpha_blend, has_transparent_shadows);
+  }
   inst_.cryptomatte.sync_object(ob, res_handle);
 }
 
@@ -1256,8 +1262,11 @@ bool SyncModule::sync_sculpt(Object *ob, ObjectHandle &ob_handle, const ObjectRe
   Object *const hit_eval_object = ob_ref.stable_hit_eval_object();
 
   bool has_motion = false;
-  MaterialArray &material_array = inst_.materials.material_array_get(ob, has_motion);
-  const bool capture_hardware_scene = use_hardware_raytrace_scene_capture(inst_);
+  const bool is_shadow_catcher = ob_ref.is_shadow_catcher();
+  MaterialArray &material_array = inst_.materials.material_array_get(
+      ob, has_motion, is_shadow_catcher);
+  const bool capture_hardware_scene = use_hardware_raytrace_scene_capture(inst_) &&
+                                      !is_shadow_catcher;
   const Vector<const GPUMaterial *> sculpt_gpu_materials = capture_hardware_scene ?
                                                                material_array_hit_eval_gpu_materials(
                                                                    material_array) :
@@ -1363,7 +1372,10 @@ bool SyncModule::sync_sculpt(Object *ob, ObjectHandle &ob_handle, const ObjectRe
                                            capture_hardware_scene ? replay_attribute_materials.as_span() :
                                                                     material_array.gpu_materials.as_span());
 
-  inst_.shadows.sync_object(ob, ob_handle, res_handle, is_alpha_blend, has_transparent_shadows);
+  if (!is_shadow_catcher) {
+    inst_.shadows.sync_object(
+        ob, ob_handle, res_handle, is_alpha_blend, has_transparent_shadows);
+  }
   inst_.cryptomatte.sync_object(ob, res_handle);
 
   return true;
@@ -1384,8 +1396,9 @@ void SyncModule::sync_pointcloud(Object *ob, ObjectHandle &ob_handle, const Obje
   bool has_motion = inst_.velocity.step_object_sync(
       ob_handle.object_key, ob_ref, ob_handle.recalc, res_handle);
 
+  const bool is_shadow_catcher = ob_ref.is_shadow_catcher();
   Material &material = inst_.materials.material_get(
-      ob, has_motion, material_slot - 1, MAT_GEOM_POINTCLOUD);
+      ob, has_motion, material_slot - 1, MAT_GEOM_POINTCLOUD, is_shadow_catcher);
 
   auto drawcall_add = [&](MaterialPass &matpass, bool dual_sided = false) {
     if (matpass.sub_pass == nullptr) {
@@ -1442,11 +1455,13 @@ void SyncModule::sync_pointcloud(Object *ob, ObjectHandle &ob_handle, const Obje
 
   inst_.manager->extract_object_attributes(res_handle, ob_ref, material.shading.gpumat);
 
-  inst_.shadows.sync_object(ob,
-                            ob_handle,
-                            res_handle,
-                            material.is_alpha_blend_transparent,
-                            material.has_transparent_shadows);
+  if (!is_shadow_catcher) {
+    inst_.shadows.sync_object(ob,
+                              ob_handle,
+                              res_handle,
+                              material.is_alpha_blend_transparent,
+                              material.has_transparent_shadows);
+  }
 }
 
 /** \} */
@@ -1547,7 +1562,9 @@ void SyncModule::sync_curves(Object *ob,
 
   bool has_motion = inst_.velocity.step_object_sync(
       ob_handle.object_key, ob_ref, ob_handle.recalc, res_handle, modifier_data, particle_sys);
-  Material &material = inst_.materials.material_get(ob, has_motion, mat_nr - 1, MAT_GEOM_CURVES);
+  const bool is_shadow_catcher = ob_ref.is_shadow_catcher();
+  Material &material = inst_.materials.material_get(
+      ob, has_motion, mat_nr - 1, MAT_GEOM_CURVES, is_shadow_catcher);
 
   auto drawcall_add = [&](MaterialPass &matpass) {
     if (matpass.sub_pass == nullptr) {
@@ -1605,11 +1622,13 @@ void SyncModule::sync_curves(Object *ob,
 
   inst_.manager->extract_object_attributes(res_handle, ob_ref, material.shading.gpumat);
 
-  inst_.shadows.sync_object(ob,
-                            ob_handle,
-                            res_handle,
-                            material.is_alpha_blend_transparent,
-                            material.has_transparent_shadows);
+  if (!is_shadow_catcher) {
+    inst_.shadows.sync_object(ob,
+                              ob_handle,
+                              res_handle,
+                              material.is_alpha_blend_transparent,
+                              material.has_transparent_shadows);
+  }
 }
 
 /** \} */

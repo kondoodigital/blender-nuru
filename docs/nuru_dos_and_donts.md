@@ -100,6 +100,13 @@ with OpenImageDenoise - your render never stops.
   the control is for.
 - **Do** use **Transparent Shadows** and **Color Transmission** together for tinted glass:
   the first controls how much light passes, the second how much color it carries.
+- **Do** enable **Shadow Catcher** under **Object Properties → Visibility → Mask** on a mesh
+  that represents the real surface in your footage. Enable **Film → Transparent** before
+  exporting the Combined RGBA matte.
+- **Don't** expect the catcher to reproduce GI, AO, reflections, or arbitrary RGB multiplication
+  over every background. This focused catcher keeps direct sun and local-light shadows only; use
+  the premultiplied result over a neutral reference and see **Shadows And Lights** for the color
+  limitation.
 - **Don't** leave Raytrace Shadows on for stylized scenes that want classic shadow maps -
   Nuru features are toggles, not obligations; mix hardware and classic paths per scene.
 

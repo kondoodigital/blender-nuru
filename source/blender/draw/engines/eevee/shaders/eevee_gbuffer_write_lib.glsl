@@ -281,12 +281,14 @@ Packed pack(InputClosures cl_data,
             packed_float3 surface_N,
             float thickness,
             bool use_object_id,
-            bool is_thin_glass)
+            bool is_thin_glass,
+            bool is_shadow_catcher)
 {
   Packer packer;
   packer.header = Header::zero();
   packer.header.use_object_id_set(use_object_id);
   packer.header.thin_glass_set(is_thin_glass);
+  packer.header.shadow_catcher_set(is_shadow_catcher);
 
   for (int i = 0; i < GBUFFER_LAYER_MAX; i++) {
     packer.closures[i] = pack_closure(cl_data.closure[i]);
@@ -317,6 +319,16 @@ Packed pack(InputClosures cl_data,
   packer.header.geometry_normal_set(Ng, packer.closures[0].N);
 
   return packer.result_get();
+}
+
+Packed pack(InputClosures cl_data,
+            float3 Ng,
+            packed_float3 surface_N,
+            float thickness,
+            bool use_object_id,
+            bool is_thin_glass)
+{
+  return pack(cl_data, Ng, surface_N, thickness, use_object_id, is_thin_glass, false);
 }
 
 Packed pack(InputClosures cl_data,

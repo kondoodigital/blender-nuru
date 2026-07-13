@@ -108,6 +108,7 @@ inline void ObjectInfos::sync(const draw::ObjectRef ref,
       flag, ref.object->transflag & OB_NEG_SCALE, eObjectInfoFlag::OBJECT_NEGATIVE_SCALE);
   SET_FLAG_FROM_TEST(flag, is_holdout, eObjectInfoFlag::OBJECT_HOLDOUT);
   SET_FLAG_FROM_TEST(flag, is_active_edit_mode, eObjectInfoFlag::OBJECT_ACTIVE_EDIT_MODE);
+  SET_FLAG_FROM_TEST(flag, ref.is_shadow_catcher(), eObjectInfoFlag::OBJECT_SHADOW_CATCHER);
 
   if (ref.object->shadow_terminator_normal_offset > 0.0f) {
     using namespace blender::math;

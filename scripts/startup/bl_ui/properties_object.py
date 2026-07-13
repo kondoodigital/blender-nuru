@@ -455,6 +455,9 @@ class OBJECT_PT_visibility(ObjectButtonsPanel, Panel):
 
         layout.separator()
         col = layout.column(heading="Mask")
+        if context.engine == 'BLENDER_EEVEE' and ob.type in {
+                'MESH', 'CURVE', 'SURFACE', 'META', 'FONT', 'CURVES', 'POINTCLOUD'}:
+            col.prop(ob, "is_shadow_catcher")
         col.prop(ob, "is_holdout")
 
 

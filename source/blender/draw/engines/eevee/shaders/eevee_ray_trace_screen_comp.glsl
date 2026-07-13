@@ -97,6 +97,13 @@ bool screen_hit_continuation_required(bool is_reflection)
                          (uniform_buf.raytrace.hardware_refraction_bounces > 1);
 }
 
+bool screen_hit_is_shadow_catcher(float2 hit_uv)
+{
+  const int2 extent = textureSize(gbuf_header_tx, 0).xy;
+  const int2 hit_texel = clamp(int2(hit_uv * float2(extent)), int2(0), extent - 1);
+  return gbuffer::read_header(hit_texel).is_shadow_catcher();
+}
+
 bool screen_hit_continuation_closure_load(int2 hit_texel,
                                           ClosureUndetermined &hit_cl,
                                           float &hit_thickness)
@@ -423,6 +430,9 @@ void main()
                           false, /* allow_self_intersection */
                           ray_view);
 
+    if (hit.valid && screen_hit_is_shadow_catcher(hit.ss_hit_P.xy)) {
+      hit.valid = false;
+    }
     if (hit.valid) {
       float3 hit_P = transform_point(drw_view().viewinv, hit.v_hit_P);
       /* TODO(@fclem): Split matrix multiply for precision. */
@@ -442,6 +452,9 @@ void main()
                           true,  /* allow_self_intersection */
                           ray_view);
 
+    if (hit.valid && screen_hit_is_shadow_catcher(hit.ss_hit_P.xy)) {
+      hit.valid = false;
+    }
     if (hit.valid) {
       radiance = textureLod(radiance_back_tx, hit.ss_hit_P.xy, 0.0f).rgb;
     }

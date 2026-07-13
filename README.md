@@ -48,6 +48,7 @@ Nuru is a hybrid real-time renderer built for interactive viewport work and fast
 ## Features
 
 - **Selective hardware ray tracing** — enable GI, shadows, reflections, and refractions independently.
+- **Direct Shadow Catcher** — make a mesh receiver transparent while keeping soft, alpha-cutout, and tinted direct shadows in Combined RGBA for compositing.
 - **True materials in reflections** — mirrors and refractive surfaces show the real material of what they reflect: image textures, UV maps, mixed shaders, and multi-material objects stay intact.
 - **Thin Glass** — window panes pass light at full strength and never darken a sun-lit room.
 - **One Resolution control** — the trace resolution (100/75/50/25%) applies to every traced effect; 50% is fast for lookdev, 100% gives the sharpest mirrors.
@@ -55,6 +56,10 @@ Nuru is a hybrid real-time renderer built for interactive viewport work and fast
 - **Animation stability** — integrated denoising and temporal accumulation keep sequences calm at low sample counts.
 - **Denoiser choice** — OpenImageDenoise or the NVIDIA OptiX denoiser (Windows), both zero-copy in the same pipeline.
 - **Many lights welcome** — light selection scales to scenes full of practicals and fixtures.
+
+The refreshed macOS 1.0 package includes Direct Shadow Catcher. The current Windows and Linux
+1.0 downloads are earlier builds; their package refreshes will follow after Vulkan branch
+integration and platform validation.
 
 ## Install On macOS
 

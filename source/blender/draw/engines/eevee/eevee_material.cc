@@ -297,8 +297,7 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
     if (shader_sub != nullptr) {
       /* Create a sub for this material as `shader_sub` is for sharing shader between materials. */
       matpass.sub_pass = &shader_sub->sub(GPU_material_get_name(matpass.gpumat));
-      matpass.sub_pass->material_set(
-          *inst_.manager, matpass.gpumat, true);
+      matpass.sub_pass->material_set(*inst_.manager, matpass.gpumat, true);
     }
     else {
       matpass.sub_pass = nullptr;
@@ -311,9 +310,16 @@ MaterialPass MaterialModule::material_pass_get(Object *ob,
 Material &MaterialModule::material_sync(Object *ob,
                                         blender::Material *blender_mat,
                                         eMaterialGeometry geometry_type,
-                                        bool has_motion)
+                                        bool has_motion,
+                                        bool is_shadow_catcher_override)
 {
   bool hide_on_camera = ob->visibility_flag & OB_HIDE_CAMERA;
+  const bool is_shadow_catcher = (is_shadow_catcher_override ||
+                                  (ob->visibility_flag & OB_SHADOW_CATCHER)) &&
+                                 !(ob->visibility_flag & OB_HOLDOUT) &&
+                                 !(ob->base_flag & BASE_HOLDOUT);
+  short visibility_flags = ob->visibility_flag;
+  SET_FLAG_FROM_TEST(visibility_flags, is_shadow_catcher, OB_SHADOW_CATCHER);
 
   if (geometry_type == MAT_GEOM_VOLUME) {
     if (!VolumeModule::runtime_enabled()) {
@@ -355,7 +361,8 @@ Material &MaterialModule::material_sync(Object *ob,
     return mat;
   }
 
-  const bool use_forward_pipeline = (material_surface_render_method_get(inst_, blender_mat) ==
+  const bool use_forward_pipeline = !is_shadow_catcher &&
+                                    (material_surface_render_method_get(inst_, blender_mat) ==
                                      MA_SURFACE_METHOD_FORWARD);
   eMaterialPipeline surface_pipe, prepass_pipe;
   if (use_forward_pipeline) {
@@ -367,7 +374,7 @@ Material &MaterialModule::material_sync(Object *ob,
     prepass_pipe = has_motion ? MAT_PIPE_PREPASS_DEFERRED_VELOCITY : MAT_PIPE_PREPASS_DEFERRED;
   }
 
-  MaterialKey material_key(blender_mat, geometry_type, surface_pipe, ob->visibility_flag);
+  MaterialKey material_key(blender_mat, geometry_type, surface_pipe, visibility_flags);
 
   Material &mat = material_map_.lookup_or_add_cb(material_key, [&]() {
     Material mat;
@@ -411,7 +418,7 @@ Material &MaterialModule::material_sync(Object *ob,
 
       mat.overlap_masking = MaterialPass();
       mat.capture = MaterialPass();
-      if ((geometry_type == MAT_GEOM_MESH) &&
+      if (!is_shadow_catcher && (geometry_type == MAT_GEOM_MESH) &&
           (inst_.raytracing.active_hardware_feature_mask() != 0))
       {
         mat.hit_eval = material_pass_get(ob, blender_mat, MAT_PIPE_HIT_EVAL, geometry_type);
@@ -420,7 +427,8 @@ Material &MaterialModule::material_sync(Object *ob,
         mat.hit_eval = MaterialPass();
       }
 
-      if (inst_.needs_lightprobe_sphere_passes() && !(ob->visibility_flag & OB_HIDE_PROBE_CUBEMAP))
+      if (!is_shadow_catcher && inst_.needs_lightprobe_sphere_passes() &&
+          !(ob->visibility_flag & OB_HIDE_PROBE_CUBEMAP))
       {
         mat.lightprobe_sphere_prepass = material_pass_get(
             ob, blender_mat, MAT_PIPE_PREPASS_DEFERRED, geometry_type, MAT_PROBE_REFLECTION);
@@ -432,7 +440,9 @@ Material &MaterialModule::material_sync(Object *ob,
         mat.lightprobe_sphere_shading = MaterialPass();
       }
 
-      if (inst_.needs_planar_probe_passes() && !(ob->visibility_flag & OB_HIDE_PROBE_PLANAR)) {
+      if (!is_shadow_catcher && inst_.needs_planar_probe_passes() &&
+          !(ob->visibility_flag & OB_HIDE_PROBE_PLANAR))
+      {
         mat.planar_probe_prepass = material_pass_get(
             ob, blender_mat, MAT_PIPE_PREPASS_PLANAR, geometry_type, MAT_PROBE_PLANAR);
         mat.planar_probe_shading = material_pass_get(
@@ -444,7 +454,7 @@ Material &MaterialModule::material_sync(Object *ob,
       }
 
       mat.has_surface = GPU_material_has_surface_output(mat.shading.gpumat);
-      mat.has_volume = VolumeModule::runtime_enabled() &&
+      mat.has_volume = !is_shadow_catcher && VolumeModule::runtime_enabled() &&
                        GPU_material_has_volume_output(mat.shading.gpumat);
       if (mat.has_volume && !hide_on_camera) {
         mat.volume_occupancy = material_pass_get(
@@ -458,7 +468,7 @@ Material &MaterialModule::material_sync(Object *ob,
       }
     }
 
-    if (!(ob->visibility_flag & OB_HIDE_SHADOW)) {
+    if (!is_shadow_catcher && !(ob->visibility_flag & OB_HIDE_SHADOW)) {
       mat.shadow = material_pass_get(ob, blender_mat, MAT_PIPE_SHADOW, geometry_type);
     }
     else {
@@ -515,7 +525,9 @@ blender::Material *MaterialModule::material_from_slot(Object *ob, int slot)
   return ma;
 }
 
-MaterialArray &MaterialModule::material_array_get(Object *ob, bool has_motion)
+MaterialArray &MaterialModule::material_array_get(Object *ob,
+                                                  bool has_motion,
+                                                  bool is_shadow_catcher)
 {
   material_array_.materials.clear();
   material_array_.gpu_materials.clear();
@@ -525,7 +537,8 @@ MaterialArray &MaterialModule::material_array_get(Object *ob, bool has_motion)
   for (auto i : IndexRange(materials_len)) {
     blender::Material *blender_mat = (material_override) ? material_override :
                                                            material_from_slot(ob, i);
-    Material &mat = material_sync(ob, blender_mat, to_material_geometry(ob), has_motion);
+    Material &mat = material_sync(
+        ob, blender_mat, to_material_geometry(ob), has_motion, is_shadow_catcher);
     /* \note Perform a whole copy since next material_sync() can move the Material memory location
      * (i.e: because of its container growing) */
     material_array_.materials.append(mat);
@@ -537,11 +550,13 @@ MaterialArray &MaterialModule::material_array_get(Object *ob, bool has_motion)
 Material &MaterialModule::material_get(Object *ob,
                                        bool has_motion,
                                        int mat_nr,
-                                       eMaterialGeometry geometry_type)
+                                       eMaterialGeometry geometry_type,
+                                       bool is_shadow_catcher)
 {
   blender::Material *blender_mat = (material_override) ? material_override :
                                                          material_from_slot(ob, mat_nr);
-  Material &mat = material_sync(ob, blender_mat, geometry_type, has_motion);
+  Material &mat = material_sync(
+      ob, blender_mat, geometry_type, has_motion, is_shadow_catcher);
   return mat;
 }
 

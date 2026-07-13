@@ -87,6 +87,8 @@
   <ul>
     <li><strong>Do</strong> raise shadow <strong>Samples</strong> for large area lights and soft sun - that is exactly what the control is for.</li>
     <li><strong>Do</strong> use <strong>Transparent Shadows</strong> and <strong>Color Transmission</strong> together for tinted glass: the first controls how much light passes, the second how much color it carries.</li>
+    <li><strong>Do</strong> enable <strong>Shadow Catcher</strong> under <strong>Object Properties - Visibility - Mask</strong> on a mesh that represents the real surface in your footage. Enable <strong>Film - Transparent</strong> before exporting the Combined RGBA matte.</li>
+    <li><strong>Don't</strong> expect the catcher to reproduce GI, AO, reflections, or arbitrary RGB multiplication over every background. This focused catcher keeps direct sun and local-light shadows only; use the premultiplied result over a neutral reference and see <strong>Shadows And Lights</strong> for the color limitation.</li>
     <li><strong>Don't</strong> leave Raytrace Shadows on for stylized scenes that want classic shadow maps - Nuru features are toggles, not obligations; mix hardware and classic paths per scene.</li>
   </ul>
 

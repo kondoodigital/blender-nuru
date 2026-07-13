@@ -90,6 +90,9 @@ void main()
   }
 
   const gbuffer::Layers gbuf = gbuffer::read_layers(texel);
+  if (gbuf.header.is_shadow_catcher()) {
+    return;
+  }
   const uchar closure_count = gbuf.header.closure_len();
   const uint3 bin_indices = gbuf.header.bin_index_per_layer();
 

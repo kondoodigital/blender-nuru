@@ -58,6 +58,17 @@
   <p>Use this when you want colored glass or transparent surfaces to cast colored light into the shadow.</p>
   <p>Thin Glass materials are exempt from ray-traced shadows entirely: window panes pass light at full strength instead of casting a shadow.</p>
 
+  <h2>Shadow Catcher</h2>
+  <p>Enable <strong>Shadow Catcher</strong> under <strong>Object Properties - Visibility - Mask</strong> on a mesh that should receive compositing shadows. Nuru makes the mesh surface transparent and writes only direct shadows from sun and local lights into Combined RGBA.</p>
+  <p class="note">The refreshed macOS 1.0 package includes this feature. The current Windows and Linux 1.0 downloads are earlier builds; their package refreshes will follow after Vulkan branch integration and platform validation.</p>
+  <ul>
+    <li>Areas without direct shadow are fully transparent.</li>
+    <li>Soft shadows and alpha-cutout blockers produce partial alpha.</li>
+    <li>Refractive and tinted blockers retain visible RGB shadow tint according to <strong>Transparent Shadows</strong> and <strong>Color Transmission</strong>.</li>
+    <li>The catcher does not cast shadows or contribute material color, emission, ambient occlusion, caustics, indirect light, reflections, or refractions.</li>
+  </ul>
+  <p>Enable <strong>Film - Transparent</strong> when exporting the catcher for compositing. Combined uses a premultiplied colored RGBA approximation that preserves the intended result over a white reference. A single alpha channel cannot reproduce independent red, green, and blue multiplication over every possible background, and this version does not add a separate RGB multiplication pass.</p>
+
   <h2>Local Lights, Sun, And World Light</h2>
   <p>Nuru is designed to work with local lights, sun lights, and world lighting. The visible result still depends on the light type, material setup, scene scale, and the enabled Quick Settings.</p>
   <p>For best results, check shadows in <strong>Rendered</strong> viewport with the same feature settings you intend to render with.</p>

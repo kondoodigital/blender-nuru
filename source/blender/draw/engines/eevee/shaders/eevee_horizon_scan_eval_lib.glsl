@@ -21,6 +21,9 @@ SHADER_LIBRARY_CREATE_INFO(eevee_horizon_scan)
 
 #include "draw_shape_lib.glsl"
 #include "draw_view_lib.glsl"
+#ifdef HORIZON_IGNORE_SHADOW_CATCHERS
+#  include "eevee_gbuffer_read_lib.glsl"
+#endif
 #include "eevee_horizon_scan_lib.glsl"
 #include "eevee_ray_types_lib.glsl"
 #include "eevee_sampling_lib.glsl"
@@ -159,6 +162,15 @@ HorizonScanResult horizon_scan_eval(float3 vP,
           /* Skip background. Avoids making shadow on the geometry near the far plane. */
           continue;
         }
+
+#ifdef HORIZON_IGNORE_SHADOW_CATCHERS
+        const int2 gbuffer_extent = textureSize(gbuf_header_tx, 0).xy;
+        const int2 sample_texel = clamp(
+            int2(sample_uv * float2(gbuffer_extent)), int2(0), gbuffer_extent - 1);
+        if (gbuffer::read_header(sample_texel).is_shadow_catcher()) {
+          continue;
+        }
+#endif
 
         /* Bias depth a bit to avoid self shadowing issues. */
         constexpr float bias = 2.0f * 2.4e-7f;

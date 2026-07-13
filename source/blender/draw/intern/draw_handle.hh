@@ -240,6 +240,15 @@ class ObjectRef {
     return dupli_parent_ != nullptr;
   }
 
+  bool is_shadow_catcher() const
+  {
+    const bool is_holdout = (object->base_flag & BASE_HOLDOUT) ||
+                            (object->visibility_flag & OB_HOLDOUT);
+    return !is_holdout &&
+           ((object->visibility_flag & OB_SHADOW_CATCHER) ||
+            (dupli_parent_ && (dupli_parent_->visibility_flag & OB_SHADOW_CATCHER)));
+  }
+
   Object *source_object() const
   {
     return (dupli_object_ && dupli_object_->ob) ? dupli_object_->ob : object;

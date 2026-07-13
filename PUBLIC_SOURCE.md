@@ -2,7 +2,7 @@
 
 This repository publishes the complete corresponding source for the Blender-Nuru public source snapshot.
 
-- Exact Nuru source commit (macOS binary): `c1f88d08439` (`RUBY 44`, release `v5.1.1-1.0`)
+- Exact Nuru source commit (macOS binary): `0e9b94f620d` (`RUBY 49`, release `v5.1.1-1.0`)
 - Exact Nuru source commit (Windows binary): `b65404962f5` (`EMERALD 38`, release `v5.1.1-1.0`)
 - Exact Nuru source commit (Linux binary): `ec87b62dbaa` (`SAPPHIRE 56`, release `v5.1.1-1.0`)
 - Public source snapshot: `Blender-Nuru 5.1.1-0.9.8 public source snapshot` plus the
@@ -10,7 +10,9 @@ This repository publishes the complete corresponding source for the Blender-Nuru
   `Blender-Nuru 5.1.1-0.9.8 Linux public source update` (tag `v5.1.1-0.9.8-linux`), updated by
   the `Blender-Nuru 5.1.1-1.0 Linux public source update` (tag `v5.1.1-1.0-linux`)
   the `Blender-Nuru 5.1.1-1.0 Windows public source update` (tag `v5.1.1-1.0-windows`),
-  and the `Blender-Nuru 5.1.1-1.0 macOS public source update` (tag `v5.1.1-1.0-macos`).
+  and the `Blender-Nuru 5.1.1-1.0 macOS public source update`, refreshed by
+  `Blender-Nuru 5.1.1-1.0 macOS Shadow Catcher source refresh`
+  (tag `v5.1.1-1.0-macos`).
 - Runtime and build-required source assets, including the macOS prebuilt
   libraries under `lib/macos_arm64/`, are stored directly in Git.
 - The Windows prebuilt libraries are not stored in this repository; they are fetched from the
@@ -55,11 +57,11 @@ ls images/
 Expected logo files include:
 
 ```text
-Nuru Logo Wide.png
-Nuru Logo-4x-upscale-4x.png
-Nuru Logo.png
-nuru_logo_256.png
-nuru_logo_512.png
+images/nuru_logo.png
+images/nuru_logo_256.png
+images/nuru_logo_4x_upscale_4x.png
+images/nuru_logo_512.png
+images/nuru_logo_wide.png
 ```
 
 These files are not Git LFS pointers and do not require a Git LFS download.
@@ -165,3 +167,7 @@ ctest --test-dir builds/macos-dev
 ## Binary Distribution
 
 Do not use Git LFS as the public distribution path for Blender-Nuru binaries. Publish binaries through GitHub Releases or another artifact host, and pin each binary release to the exact source tag or commit used to build it. The macOS DMG and zip, the Windows installer and zip, and the Linux `.deb` and `.tar.gz` are all published on the `v5.1.1-1.0` release and correspond to the `v5.1.1-1.0-macos`, `v5.1.1-1.0-windows`, and `v5.1.1-1.0-linux` source tags respectively.
+
+The refreshed macOS 1.0 package includes Direct Shadow Catcher. The current Windows and Linux
+1.0 binaries remain the earlier builds from `b65404962f5` and `ec87b62dbaa`; their package
+refreshes will follow after Vulkan branch integration and platform validation.

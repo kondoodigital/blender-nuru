@@ -208,6 +208,7 @@
   </section>
 
   <p class="muted">Downloads are on the <a href="https://github.com/kondoodigital/blender-nuru">GitHub repository page</a>. Requirements and first-start notes (SmartScreen, Gatekeeper, Linux install) are on the <a href="docs/nuru_windows.html">Windows</a>, <a href="docs/nuru_macos.html">macOS</a>, and <a href="docs/nuru_linux.html">Linux</a> pages.</p>
+  <p class="note">The refreshed macOS 1.0 package includes Direct Shadow Catcher. The current Windows and Linux 1.0 downloads are earlier builds; their package refreshes will follow after Vulkan branch integration and platform validation.</p>
 
   <h2 id="what-nuru-is">What Nuru Is</h2>
   <p><strong>Nuru</strong> adds a <strong>Nuru Raytracing</strong> method to Blender Eevee. It lets artists choose which parts of the render use hardware ray tracing: global illumination, shadows, reflections, and refractions.</p>
@@ -220,6 +221,10 @@
     <article class="feature">
       <h3>High-resolution output</h3>
       <p>At 4K and above, Nuru can keep expensive RT work at a lower internal Resolution while still producing a high-resolution final image. The Resolution setting applies to every traced effect, including reflections and refractions.</p>
+    </article>
+    <article class="feature">
+      <h3>Direct Shadow Catcher</h3>
+      <p>Make a mesh receiver transparent while keeping soft, alpha-cutout, and tinted direct shadows in Combined RGBA for compositing.</p>
     </article>
     <article class="feature">
       <h3>True materials in reflections</h3>

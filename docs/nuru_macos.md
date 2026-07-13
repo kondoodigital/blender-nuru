@@ -63,5 +63,6 @@ Denoising on macOS runs through **OpenImageDenoise** on the GPU. The **Denoiser*
 
 - [Nuru Overview](nuru_overview.html)
 - [UI Reference](nuru_ui_reference.html)
+- [Shadows And Lights](nuru_shadows_and_lights.html)
 - [Dos And Don'ts](nuru_dos_and_donts.html)
 - [Materials](nuru_materials.html)

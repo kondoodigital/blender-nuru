@@ -51,20 +51,22 @@ void main()
   if (valid_texel) {
     gbuffer::Header header = gbuffer::read_header(texel);
 
-    for (uchar i = 0; i < GBUFFER_LAYER_MAX; i++) {
-      ClosureUndetermined cl = gbuffer::read_bin(header, texel, i);
-      if (cl.type == CLOSURE_NONE_ID) {
-        continue;
-      }
-      float roughness = closure_apparent_roughness_get(cl);
-      float ray_roughness_fac = ray_roughness_factor(uniform_buf.raytrace, roughness);
+    if (!header.is_shadow_catcher()) {
+      for (uchar i = 0; i < GBUFFER_LAYER_MAX; i++) {
+        ClosureUndetermined cl = gbuffer::read_bin(header, texel, i);
+        if (cl.type == CLOSURE_NONE_ID) {
+          continue;
+        }
+        float roughness = closure_apparent_roughness_get(cl);
+        float ray_roughness_fac = ray_roughness_factor(uniform_buf.raytrace, roughness);
 
-      /* We don't care about race condition here. */
-      if (ray_roughness_fac > 0.0f) {
-        tile_contains_horizon_scan = 1;
-      }
-      if (ray_roughness_fac < 1.0f) {
-        tile_contains_ray_tracing[i] = 1;
+        /* We don't care about race condition here. */
+        if (ray_roughness_fac > 0.0f) {
+          tile_contains_horizon_scan = 1;
+        }
+        if (ray_roughness_fac < 1.0f) {
+          tile_contains_ray_tracing[i] = 1;
+        }
       }
     }
   }

@@ -151,8 +151,9 @@ enum [[host_shared]] eObjectInfoFlag : uint32_t {
   /* Implies all objects that match the current active object's mode and able to be edited
    * simultaneously. Currently only applicable for edit mode. */
   OBJECT_ACTIVE_EDIT_MODE = (1u << 6u),
+  OBJECT_SHADOW_CATCHER = (1u << 7u),
   /* Avoid skipped info to change culling. */
-  OBJECT_NO_INFO = ~OBJECT_HOLDOUT
+  OBJECT_NO_INFO = ~(OBJECT_HOLDOUT | OBJECT_SHADOW_CATCHER)
 };
 
 #ifndef GPU_SHADER
