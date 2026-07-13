@@ -4,7 +4,7 @@ This repository publishes the complete corresponding source for the Blender-Nuru
 
 - Exact Nuru source commit (macOS binary): `0e9b94f620d` (`RUBY 49`, release `v5.1.1-1.0`)
 - Exact Nuru source commit (Windows binary): `98366ee9445` (`EMERALD 40`, release `v5.1.1-1.0`)
-- Exact Nuru source commit (Linux binary): `ec87b62dbaa` (`SAPPHIRE 56`, release `v5.1.1-1.0`)
+- Exact Nuru source commit (Linux binary): `965b15b7896` (`SAPPHIRE 61`, release `v5.1.1-1.0`)
 - Public source snapshot: `Blender-Nuru 5.1.1-0.9.8 public source snapshot` plus the
   `Blender-Nuru 5.1.1-0.9.8 Windows public source update` (tag `v5.1.1-0.9.8-windows`) and the
   `Blender-Nuru 5.1.1-0.9.8 Linux public source update` (tag `v5.1.1-0.9.8-linux`), updated by
@@ -14,7 +14,9 @@ This repository publishes the complete corresponding source for the Blender-Nuru
   `Blender-Nuru 5.1.1-1.0 macOS Shadow Catcher source refresh`
   (tag `v5.1.1-1.0-macos`), then the
   `Blender-Nuru 5.1.1-1.0 Windows Shadow Catcher source refresh`
-  (tag `v5.1.1-1.0-windows`).
+  (tag `v5.1.1-1.0-windows`), and the
+  `Blender-Nuru 5.1.1-1.0 Linux Shadow Catcher source refresh`
+  (tag `v5.1.1-1.0-linux`).
 - Runtime and build-required source assets, including the macOS prebuilt
   libraries under `lib/macos_arm64/`, are stored directly in Git.
 - The Windows prebuilt libraries are not stored in this repository; they are fetched from the
@@ -170,6 +172,4 @@ ctest --test-dir builds/macos-dev
 
 Do not use Git LFS as the public distribution path for Blender-Nuru binaries. Publish binaries through GitHub Releases or another artifact host, and pin each binary release to the exact source tag or commit used to build it. The macOS DMG and zip, the Windows installer and zip, and the Linux `.deb` and `.tar.gz` are all published on the `v5.1.1-1.0` release and correspond to the `v5.1.1-1.0-macos`, `v5.1.1-1.0-windows`, and `v5.1.1-1.0-linux` source tags respectively.
 
-The refreshed macOS and Windows 1.0 packages include Direct Shadow Catcher. The current Linux
-1.0 binary remains the earlier build from `ec87b62dbaa`; its package refresh will follow after
-Vulkan branch integration and platform validation.
+The refreshed macOS, Windows, and Linux 1.0 packages include Direct Shadow Catcher.
