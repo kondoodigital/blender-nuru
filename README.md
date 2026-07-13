@@ -57,9 +57,7 @@ Nuru is a hybrid real-time renderer built for interactive viewport work and fast
 - **Denoiser choice** — OpenImageDenoise or the NVIDIA OptiX denoiser (Windows), both zero-copy in the same pipeline.
 - **Many lights welcome** — light selection scales to scenes full of practicals and fixtures.
 
-The refreshed macOS 1.0 package includes Direct Shadow Catcher. The current Windows and Linux
-1.0 downloads are earlier builds; their package refreshes will follow after Vulkan branch
-integration and platform validation.
+The refreshed macOS, Windows, and Linux 1.0 packages include Direct Shadow Catcher.
 
 ## Install On macOS
 

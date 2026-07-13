@@ -13,6 +13,4 @@ The documentation index moved to the Nuru home page: see the root `README.md` / 
 | [Nuru On macOS](nuru_macos.html) | macOS requirements, installation, Gatekeeper notes, and Apple Silicon support. |
 | [Nuru On Linux](nuru_linux.html) | Linux requirements, installation, and platform notes. |
 
-The refreshed macOS 1.0 package includes Direct Shadow Catcher. The current Windows and Linux 1.0
-downloads are earlier builds; their package refreshes will follow after Vulkan branch integration
-and platform validation.
+The refreshed macOS, Windows, and Linux 1.0 packages include Direct Shadow Catcher.

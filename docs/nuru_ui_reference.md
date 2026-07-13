@@ -60,9 +60,7 @@ The Nuru catcher is receiver-only. It does not cast shadows, appear in reflectio
 refractions, or contribute material shading, emission, ambient occlusion, caustics, or indirect
 light. Enable **Film → Transparent** for a transparent render intended for compositing.
 
-The refreshed macOS 1.0 package includes this control. The current Windows and Linux 1.0 downloads
-are earlier builds; their package refreshes will follow after Vulkan branch integration and
-platform validation.
+The refreshed macOS, Windows, and Linux 1.0 packages include this control.
 
 ## Indirect Light
 

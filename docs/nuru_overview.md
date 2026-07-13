@@ -36,9 +36,7 @@ Nuru source is organized so shared behavior and platform-specific backend work d
 
 Packaged builds are available for macOS (Metal), Windows (Vulkan, NVIDIA RTX), and Linux (Vulkan, NVIDIA RTX). All three inherit the same shared Nuru UI and renderer behavior from `nuru-core`.
 
-The refreshed macOS 1.0 package includes **Direct Shadow Catcher**. The current Windows and Linux
-1.0 downloads are earlier builds; their package refreshes will follow after Vulkan branch
-integration and platform validation.
+The refreshed macOS, Windows, and Linux 1.0 packages include **Direct Shadow Catcher**.
 
 ## Advantages
 
