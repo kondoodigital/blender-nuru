@@ -41,21 +41,20 @@
   <ol>
     <li>Download <strong><code>Blender-Nuru-macos-&lt;version&gt;.dmg</code></strong> from the <a href="https://github.com/kondoodigital/blender-nuru/releases">Releases page</a> and open it.</li>
     <li>Double-click <strong>Install Blender-Nuru</strong> and enter your administrator password when asked.</li>
-    <li>The installer copies <strong><code>Blender-Nuru.app</code></strong> to <strong><code>/Applications</code></strong>, clears the download quarantine flag, and registers the app with Launchpad.</li>
+    <li>The installer copies <strong><code>Blender-Nuru.app</code></strong> to <strong><code>/Applications</code></strong> and registers the app with Launchpad.</li>
     <li>Start <strong>Blender-Nuru</strong> from Applications or Launchpad.</li>
   </ol>
-  <p class="note">Because the installer itself is downloaded and not notarized, macOS may block its first start. Approve it once under <strong>System Settings &gt; Privacy &amp; Security &gt; Open Anyway</strong> (on older macOS versions, right-click <strong>Install Blender-Nuru</strong> and choose <strong>Open</strong>), then run it again.</p>
+  <p class="note">The disk image, installer, and application are Developer ID signed by <strong>Kondoo Digital GmbH</strong> and notarized by Apple.</p>
 
   <h3>Portable zip</h3>
   <ol>
     <li>Download the macOS zip from the <a href="https://github.com/kondoodigital/blender-nuru/releases">Releases page</a> and unzip it.</li>
-    <li>Double-click <strong>Install Blender-Nuru</strong> inside the unzipped folder, or install manually: move <strong><code>Blender-Nuru.app</code></strong> to <strong><code>/Applications</code></strong> and clear the quarantine attribute once from a terminal (see below).</li>
+    <li>Double-click <strong>Install Blender-Nuru</strong> inside the unzipped folder, or install manually by moving <strong><code>Blender-Nuru.app</code></strong> to <strong><code>/Applications</code></strong>.</li>
     <li>Start <strong>Blender-Nuru</strong> from Applications or Launchpad.</li>
   </ol>
 
   <h3>Gatekeeper</h3>
-  <p class="note">The build is not code-signed, so Gatekeeper may report the app as damaged on first start if the quarantine flag was not cleared. The installer clears it for you; for a manual install, remove it once from a terminal:</p>
-  <pre><code>xattr -dr com.apple.quarantine /Applications/Blender-Nuru.app</code></pre>
+  <p class="note">The macOS downloads use Apple Developer ID signing, hardened runtime, secure timestamps, and Apple notarization. Gatekeeper should identify the developer as <strong>Kondoo Digital GmbH</strong> and open the installer and application normally. If macOS cannot verify a download, delete it and download a fresh copy from the official GitHub Releases page rather than bypassing Gatekeeper.</p>
 
   <h2>Enable Nuru</h2>
   <ol>
@@ -74,8 +73,8 @@
   <table>
     <tr><th>Symptom</th><th>What to do</th></tr>
     <tr><td>Nuru Quick Settings do not appear</td><td>Confirm Apple Silicon M3 or newer and macOS 14 or newer. M1/M2 are not supported.</td></tr>
-    <tr><td>Gatekeeper reports the app as damaged</td><td>Run the <code>xattr</code> command above once, then start the app again.</td></tr>
-    <tr><td>macOS still refuses to open the app after the <code>xattr</code> command</td><td>Re-download the archive, replace the app in <strong>/Applications</strong> with a fresh copy, and run the command again before the first launch.</td></tr>
+    <tr><td>Gatekeeper cannot verify the installer or app</td><td>Delete the downloaded copy and download it again from the official GitHub Releases page. Do not use a copy modified by a third party.</td></tr>
+    <tr><td>macOS identifies an unexpected developer</td><td>Cancel the launch and confirm that the download came from the official <code>kondoodigital/blender-nuru</code> release. The expected developer is <strong>Kondoo Digital GmbH</strong>.</td></tr>
     <tr><td>The first rendered frame is slow</td><td>Shaders and pipelines warm up on the first render after installation; later frames are much faster.</td></tr>
   </table>
 

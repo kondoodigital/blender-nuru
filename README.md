@@ -36,7 +36,7 @@
     </tr>
   </table>
 
-  <p>The builds are unsigned: installation and first-start notes (SmartScreen, Gatekeeper) are on the documentation site.</p>
+  <p>The application and installer in the macOS downloads are Developer ID signed by Kondoo Digital GmbH and notarized by Apple. Platform installation and security notes are on the documentation site.</p>
 </div>
 
 ## Nuru
@@ -57,22 +57,18 @@ Nuru is a hybrid real-time renderer built for interactive viewport work and fast
 - **Denoiser choice** — OpenImageDenoise or the NVIDIA OptiX denoiser (Windows), both zero-copy in the same pipeline.
 - **Many lights welcome** — light selection scales to scenes full of practicals and fixtures.
 
-The refreshed macOS, Windows, and Linux 1.0 packages include Direct Shadow Catcher.
+The current macOS, Windows, and Linux 1.0 packages include Direct Shadow Catcher. The macOS
+application and installer are Developer ID signed by Kondoo Digital GmbH and notarized by Apple.
 
 ## Install On macOS
 
-**Installer DMG (recommended):** download and open `Blender-Nuru-macos-<version>.dmg` from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases), then double-click **Install Blender-Nuru**. The installer asks for your administrator password, copies `Blender-Nuru.app` to `/Applications`, clears the download quarantine flag (Blender-Nuru is not distributed through Apple notarization), and registers the app with Launchpad. Because the installer itself is downloaded and not notarized, macOS may block its first start: approve it under **System Settings > Privacy & Security > Open Anyway** (on older macOS versions, right-click the installer and choose **Open**), then run it again.
+**Installer DMG (recommended):** download and open `Blender-Nuru-macos-<version>.dmg` from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases), then double-click **Install Blender-Nuru**. The installer asks for your administrator password, copies `Blender-Nuru.app` to `/Applications`, and registers the app with Launchpad. The disk image, installer, and application are Developer ID signed by Kondoo Digital GmbH and notarized by Apple for normal Gatekeeper verification.
 
 **Portable zip:**
 
 1. Download the macOS zip from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases).
-2. Unzip it and either double-click **Install Blender-Nuru** inside, or move `Blender-Nuru.app` to `/Applications` yourself and clear the quarantine flag once in **Terminal**:
-
-```sh
-xattr -dr com.apple.quarantine /Applications/Blender-Nuru.app
-```
-
-3. Start **Blender-Nuru** from Applications or Launchpad.
+2. Unzip it and either double-click **Install Blender-Nuru** inside, or move `Blender-Nuru.app` to `/Applications` yourself.
+3. Start **Blender-Nuru** from Applications or Launchpad. The signed and notarized application should open normally through Gatekeeper.
 
 Full macOS notes: [Nuru On macOS](https://kondoodigital.github.io/blender-nuru/docs/nuru_macos.html).
 
