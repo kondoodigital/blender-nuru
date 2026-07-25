@@ -17,24 +17,20 @@ Blender-Nuru for macOS runs Eevee on the Metal graphics backend with Nuru hardwa
 
 1. Download **`Blender-Nuru-macos-<version>.dmg`** from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases) and open it.
 2. Double-click **Install Blender-Nuru** and enter your administrator password when asked.
-3. The installer copies **`Blender-Nuru.app`** to **`/Applications`**, clears the download quarantine flag, and registers the app with Launchpad.
+3. The installer copies **`Blender-Nuru.app`** to **`/Applications`** and registers the app with Launchpad.
 4. Start **Blender-Nuru** from Applications or Launchpad.
 
-Because the installer itself is downloaded and not notarized, macOS may block its first start. Approve it once under **System Settings > Privacy & Security > Open Anyway** (on older macOS versions, right-click **Install Blender-Nuru** and choose **Open**), then run it again.
+The disk image, installer, and application are Developer ID signed by **Kondoo Digital GmbH** and notarized by Apple.
 
 ### Portable zip
 
 1. Download the macOS zip from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases) and unzip it.
-2. Double-click **Install Blender-Nuru** inside the unzipped folder, or install manually: move **`Blender-Nuru.app`** to **`/Applications`** and clear the quarantine attribute once from a terminal (see below).
+2. Double-click **Install Blender-Nuru** inside the unzipped folder, or install manually by moving **`Blender-Nuru.app`** to **`/Applications`**.
 3. Start **Blender-Nuru** from Applications or Launchpad.
 
 ### Gatekeeper
 
-The build is not code-signed, so Gatekeeper may report the app as damaged on first start if the quarantine flag was not cleared. The installer clears it for you; for a manual install, remove it once from a terminal:
-
-```sh
-xattr -dr com.apple.quarantine /Applications/Blender-Nuru.app
-```
+The macOS downloads use Apple Developer ID signing, hardened runtime, secure timestamps, and Apple notarization. Gatekeeper should identify the developer as **Kondoo Digital GmbH** and open the installer and application normally. If macOS cannot verify a download, delete it and download a fresh copy from the official GitHub Releases page rather than bypassing Gatekeeper.
 
 ## Enable Nuru
 
@@ -55,8 +51,8 @@ Denoising on macOS runs through **OpenImageDenoise** on the GPU. The **Denoiser*
 | Symptom | What to do |
 | --- | --- |
 | Nuru Quick Settings do not appear | Confirm Apple Silicon M3 or newer and macOS 14 or newer. M1/M2 are not supported. |
-| Gatekeeper reports the app as damaged | Run the `xattr` command above once, then start the app again. |
-| macOS still refuses to open the app after the `xattr` command | Re-download the archive, replace the app in `/Applications` with a fresh copy, and run the command again before the first launch. |
+| Gatekeeper cannot verify the installer or app | Delete the downloaded copy and download it again from the official GitHub Releases page. Do not use a copy modified by a third party. |
+| macOS identifies an unexpected developer | Cancel the launch and confirm that the download came from the official `kondoodigital/blender-nuru` release. The expected developer is **Kondoo Digital GmbH**. |
 | The first rendered frame is slow | Shaders and pipelines warm up on the first render after installation; later frames are much faster. |
 
 ## Related

@@ -49,9 +49,7 @@ Enable **Shadow Catcher** under **Object Properties → Visibility → Mask** on
 receive compositing shadows. Nuru makes the mesh surface transparent and writes only direct shadows
 from sun and local lights into Combined RGBA.
 
-The refreshed macOS and Windows 1.0 packages include this feature. The current Linux 1.0 download
-is an earlier build; its package refresh will follow after Vulkan branch integration and platform
-validation.
+The current macOS, Windows, and Linux 1.0 packages include this feature.
 
 - Areas without direct shadow are fully transparent.
 - Soft shadows and alpha-cutout blockers produce partial alpha.
