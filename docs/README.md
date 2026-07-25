@@ -14,4 +14,4 @@ The documentation index moved to the Nuru home page: see the root `README.md` / 
 | [Nuru On Linux](nuru_linux.html) | Linux requirements, installation, and platform notes. |
 
 The current macOS, Windows, and Linux 1.0 packages include Direct Shadow Catcher. The macOS
-application and installer are Developer ID signed by Kondoo Digital GmbH and notarized by Apple.
+application is Developer ID signed by Kondoo Digital GmbH and notarized by Apple.
