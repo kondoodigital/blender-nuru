@@ -13,24 +13,24 @@ Blender-Nuru for macOS runs Eevee on the Metal graphics backend with Nuru hardwa
 
 ## Install
 
-### Installer DMG (recommended)
+### DMG (recommended)
 
 1. Download **`Blender-Nuru-macos-<version>.dmg`** from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases) and open it.
-2. Double-click **Install Blender-Nuru** and enter your administrator password when asked.
-3. The installer copies **`Blender-Nuru.app`** to **`/Applications`** and registers the app with Launchpad.
+2. Drag **`Blender-Nuru.app`** into your **Applications** folder.
+3. Eject the disk image.
 4. Start **Blender-Nuru** from Applications or Launchpad.
 
-The disk image, installer, and application are Developer ID signed by **Kondoo Digital GmbH** and notarized by Apple.
+The disk image and application are Developer ID signed by **Kondoo Digital GmbH** and notarized by Apple.
 
 ### Portable zip
 
 1. Download the macOS zip from the [Releases page](https://github.com/kondoodigital/blender-nuru/releases) and unzip it.
-2. Double-click **Install Blender-Nuru** inside the unzipped folder, or install manually by moving **`Blender-Nuru.app`** to **`/Applications`**.
+2. Drag **`Blender-Nuru.app`** into your **Applications** folder.
 3. Start **Blender-Nuru** from Applications or Launchpad.
 
 ### Gatekeeper
 
-The macOS downloads use Apple Developer ID signing, hardened runtime, secure timestamps, and Apple notarization. Gatekeeper should identify the developer as **Kondoo Digital GmbH** and open the installer and application normally. If macOS cannot verify a download, delete it and download a fresh copy from the official GitHub Releases page rather than bypassing Gatekeeper.
+The macOS application uses Apple Developer ID signing, hardened runtime, a secure timestamp, and Apple notarization. The DMG is separately signed, notarized, and stapled. Gatekeeper should identify the developer as **Kondoo Digital GmbH** and open the application normally. If macOS cannot verify a download, delete it and download a fresh copy from the official GitHub Releases page rather than bypassing Gatekeeper.
 
 ## Enable Nuru
 
@@ -51,7 +51,7 @@ Denoising on macOS runs through **OpenImageDenoise** on the GPU. The **Denoiser*
 | Symptom | What to do |
 | --- | --- |
 | Nuru Quick Settings do not appear | Confirm Apple Silicon M3 or newer and macOS 14 or newer. M1/M2 are not supported. |
-| Gatekeeper cannot verify the installer or app | Delete the downloaded copy and download it again from the official GitHub Releases page. Do not use a copy modified by a third party. |
+| Gatekeeper cannot verify the DMG or app | Delete the downloaded copy and download it again from the official GitHub Releases page. Do not use a copy modified by a third party. |
 | macOS identifies an unexpected developer | Cancel the launch and confirm that the download came from the official `kondoodigital/blender-nuru` release. The expected developer is **Kondoo Digital GmbH**. |
 | The first rendered frame is slow | Shaders and pipelines warm up on the first render after installation; later frames are much faster. |
 
